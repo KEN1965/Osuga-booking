@@ -13,12 +13,14 @@
     --radius:14px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0; padding:0;}
+  html,body{margin:0; padding:0; height:100%; overscroll-behavior:none;}
   body{
     font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
     color:var(--ink); background:#f7f5f0; font-size:16px; line-height:1.6;
+    overflow:hidden;
   }
-  .wrap{max-width:640px; margin:0 auto; padding:12px 14px 20px;}
+  .wrap{max-width:640px; margin:0 auto; padding:12px 14px 0; height:100%; height:100dvh; display:flex; flex-direction:column;}
+  .scroll-area{flex:1; min-height:0; overflow-y:auto; overscroll-behavior:none; -webkit-overflow-scrolling:touch; padding-bottom:20px;}
   header.app{text-align:center; padding:10px 0 4px;}
   header.app h1{font-size:20px; margin:0; letter-spacing:.02em;}
   header.app p{margin:2px 0 0; color:var(--muted); font-size:13px;}
@@ -161,6 +163,7 @@
     <button id="tab-lookup">申込の確認・修正</button>
     <button id="tab-admin">管理者</button>
   </nav>
+  <div class="scroll-area" id="scrollArea">
 
   <!-- カレンダー -->
   <section id="view-cal">
@@ -282,6 +285,7 @@
   </section>
 
   <footer class="app">駅前集会所（大須賀集会所）／ 管理運営委員会</footer>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -302,9 +306,11 @@ const firebaseConfig = {
 };
 const DEMO = !firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf("ここ") === 0;
 let db = null;
-if (!DEMO) {
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
+if (!DEMO && window.firebase) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch (e) { db = null; }
 }
 
 /* ---------- 定数 ---------- */
@@ -359,22 +365,28 @@ function lsRead(key, fallback) {
 }
 function lsWrite(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+function withTimeout(p, ms) {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+}
 async function fetchBookingsInMonth(ymPrefix) {
   if (DEMO) {
     const all = lsRead(LS_BK, []);
     return all.filter((b) => b.date.indexOf(ymPrefix) === 0);
   }
-  const snap = await db.collection("bookings")
-    .where("date", ">=", ymPrefix + "-01").where("date", "<=", ymPrefix + "-31").get();
+  if (!db) return [];
+  const snap = await withTimeout(db.collection("bookings")
+    .where("date", ">=", ymPrefix + "-01").where("date", "<=", ymPrefix + "-31").get(), 6000);
   return snap.docs.map((d) => d.data());
 }
 async function fetchBookingsOnDate(date) {
   if (DEMO) return lsRead(LS_BK, []).filter((b) => b.date === date);
-  const snap = await db.collection("bookings").where("date", "==", date).get();
+  if (!db) return [];
+  const snap = await withTimeout(db.collection("bookings").where("date", "==", date).get(), 6000);
   return snap.docs.map((d) => d.data());
 }
 async function fetchBooking(no) {
   if (DEMO) return lsRead(LS_BK, []).find((b) => b.no === no) || null;
+  if (!db) return null;
   const doc = await db.collection("bookings").doc(no).get();
   return doc.exists ? doc.data() : null;
 }
@@ -386,16 +398,19 @@ async function saveBooking(bk) {
     lsWrite(LS_BK, all);
     return;
   }
+  if (!db) throw new Error("no db");
   await db.collection("bookings").doc(bk.no).set(bk);
 }
 async function fetchSettings() {
   if (DEMO) return Object.assign({}, DEFAULT_SETTINGS, lsRead(LS_ST, {}));
-  const doc = await db.collection("settings").doc("main").get();
+  if (!db) return Object.assign({}, DEFAULT_SETTINGS);
+  const doc = await withTimeout(db.collection("settings").doc("main").get(), 6000);
   if (!doc.exists) return Object.assign({}, DEFAULT_SETTINGS);
   return Object.assign({}, DEFAULT_SETTINGS, doc.data());
 }
 async function saveSettings(st) {
   if (DEMO) { lsWrite(LS_ST, st); return; }
+  if (!db) throw new Error("no db");
   await db.collection("settings").doc("main").set(st);
 }
 async function newBookingNo() {
@@ -427,7 +442,8 @@ function show(view) {
   $("tab-cal").classList.toggle("active", view === "cal" || view === "book" || view === "done");
   $("tab-lookup").classList.toggle("active", view === "lookup");
   $("tab-admin").classList.toggle("active", view === "admin");
-  window.scrollTo(0, 0);
+  const sa = $("scrollArea");
+  if (sa) sa.scrollTop = 0;
 }
 function msg(el, text, ok) {
   el.innerHTML = text ? '<div class="msg ' + (ok ? "ok" : "err") + '">' + esc(text) + "</div>" : "";
@@ -443,13 +459,6 @@ async function renderCalendar() {
   const y = curMonth.getFullYear(), m = curMonth.getMonth();
   $("calYM").textContent = y + "年 " + (m + 1) + "月";
   const ymPrefix = y + "-" + pad(m + 1);
-  let bookings = [];
-  try { bookings = await fetchBookingsInMonth(ymPrefix); } catch (e) { /* 読めない時は空で出す */ }
-  const byDate = {};
-  bookings.forEach((b) => {
-    if (b.status === "cancelled") return;
-    (byDate[b.date] = byDate[b.date] || []).push(b);
-  });
   const first = new Date(y, m, 1);
   const startDay = new Date(y, m, 1 - first.getDay());
   const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -461,24 +470,33 @@ async function renderCalendar() {
     const k = dateKey(d);
     const inMonth = d.getMonth() === m;
     const dow = d.getDay();
-    const list = byDate[k] || [];
-    const hasT = list.some((b) => b.status === "tentative");
-    const hasC = list.some((b) => b.status === "confirmed");
     const past = k < todayK;
     html += '<button class="cal-cell' + (dow === 0 ? " sun" : dow === 6 ? " sat" : "")
       + (inMonth ? "" : " dim") + (past && inMonth ? " past" : "") + '" data-date="' + k + '"' + (inMonth && !past ? "" : " disabled") + '>'
       + '<span class="num">' + d.getDate() + "</span>"
-      + '<span class="dots">' + (hasT ? '<span class="dot t"></span>' : "") + (hasC ? '<span class="dot c"></span>' : "") + "</span>"
+      + '<span class="dots"></span>'
       + "</button>";
   }
   $("calGrid").innerHTML = html;
   $("calGrid").querySelectorAll(".cal-cell[data-date]").forEach((el) => {
     el.addEventListener("click", () => openBooking(el.getAttribute("data-date")));
-  });
-  // 今日の丸はCSSクラスでも当てる
-  $("calGrid").querySelectorAll(".cal-cell").forEach((el) => {
     if (el.getAttribute("data-date") === todayK) el.classList.add("today");
   });
+  // 予約ドットは後から付ける（台帳の読み込みが遅くても、カレンダー自体は先に出す）
+  try {
+    const bookings = await fetchBookingsInMonth(ymPrefix);
+    const byDate = {};
+    bookings.forEach((b) => {
+      if (b.status === "cancelled") return;
+      (byDate[b.date] = byDate[b.date] || []).push(b);
+    });
+    $("calGrid").querySelectorAll(".cal-cell[data-date]").forEach((el) => {
+      const list = byDate[el.getAttribute("data-date")] || [];
+      const hasT = list.some((b) => b.status === "tentative");
+      const hasC = list.some((b) => b.status === "confirmed");
+      el.querySelector(".dots").innerHTML = (hasT ? '<span class="dot t"></span>' : "") + (hasC ? '<span class="dot c"></span>' : "");
+    });
+  } catch (e) { /* 読めない時はドットなしで出す */ }
 }
 
 /* ---------- 申込画面 ---------- */
@@ -729,10 +747,12 @@ function renderThemeRow() {
 /* ---------- 初期化 ---------- */
 async function init() {
   if (DEMO) $("demoBanner").classList.remove("hidden");
-  try { settings = await fetchSettings(); } catch (e) { settings = Object.assign({}, DEFAULT_SETTINGS); }
+  settings = Object.assign({}, DEFAULT_SETTINGS);
   applyTheme(settings.theme);
   renderDow();
   renderCalendar();
+  // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
+  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); }).catch(() => {});
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tab-lookup").addEventListener("click", () => show("lookup"));
   $("tab-admin").addEventListener("click", () => show("admin"));
