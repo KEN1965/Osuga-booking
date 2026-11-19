@@ -35,6 +35,11 @@
   nav.tabs button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
   .card{background:#fff; border-radius:var(--radius); padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.06);}
   .hidden{display:none !important;}
+  /* トップ写真（カレンダーの上） */
+  .photo-area{margin-bottom:12px;}
+  .photo-area img{display:block; width:100%; height:168px; object-fit:cover; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .adm-photo-prev{display:block; width:100%; border-radius:10px; margin:6px 0 2px;}
+  .photo-pick{display:block; text-align:center; margin-top:0; padding:10px; cursor:pointer;}
   /* calendar */
   .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
   .cal-head .ym{font-size:18px; font-weight:800;}
@@ -167,6 +172,9 @@
 
   <!-- カレンダー -->
   <section id="view-cal">
+    <div id="photoArea" class="photo-area hidden">
+      <img id="hallPhoto" alt="駅前集会所（大須賀集会所）の写真">
+    </div>
     <div class="card">
       <div class="cal-head">
         <button id="calPrev" aria-label="前の月">‹</button>
@@ -267,6 +275,14 @@
         <h2 class="view-title">設定</h2>
         <label class="f">テーマカラー（アプリ全体の色）</label>
         <div class="theme-row" id="themeRow"></div>
+        <label class="f">カレンダーの上に出る写真</label>
+        <img id="admPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
+        <div class="grid2" style="margin-top:8px;">
+          <label class="btn sub photo-pick" for="photoFile">写真を選ぶ</label>
+          <button class="btn danger hidden" id="photoDel" style="margin-top:0; padding:10px;">写真を消す</button>
+        </div>
+        <input type="file" id="photoFile" accept="image/*" class="hidden">
+        <div id="photoMsg"></div>
         <label class="f">返信の定型文</label>
         <div id="tplList"></div>
         <div class="grid2" style="margin-top:8px;">
@@ -412,6 +428,62 @@ async function saveSettings(st) {
   if (DEMO) { lsWrite(LS_ST, st); return; }
   if (!db) throw new Error("no db");
   await db.collection("settings").doc("main").set(st);
+}
+
+/* ---------- トップ写真（カレンダーの下） ---------- */
+const LS_PH = "oosuga_photo_v1";
+async function fetchPhoto() {
+  if (DEMO) return lsRead(LS_PH, "");
+  if (!db) return "";
+  const doc = await withTimeout(db.collection("settings").doc("photo").get(), 6000);
+  return doc.exists ? (doc.data().data || "") : "";
+}
+async function savePhoto(dataUrl) {
+  if (DEMO) { lsWrite(LS_PH, dataUrl); return; }
+  if (!db) throw new Error("no db");
+  await db.collection("settings").doc("photo").set({ data: dataUrl });
+}
+async function deletePhoto() {
+  if (DEMO) { localStorage.removeItem(LS_PH); return; }
+  if (!db) throw new Error("no db");
+  await db.collection("settings").doc("photo").delete();
+}
+function applyPhoto(url) {
+  if (url) { $("hallPhoto").src = url; $("photoArea").classList.remove("hidden"); }
+  else { $("photoArea").classList.add("hidden"); $("hallPhoto").removeAttribute("src"); }
+}
+function fileToDataURL(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const max = 1000;
+      const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let q = 0.78;
+      let out = c.toDataURL("image/jpeg", q);
+      while (out.length > 880000 && q > 0.4) { q -= 0.12; out = c.toDataURL("image/jpeg", q); }
+      res(out);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+async function renderPhotoSetting() {
+  let url = "";
+  try { url = await fetchPhoto(); } catch (e) {}
+  if (url) {
+    $("admPhotoPrev").src = url;
+    $("admPhotoPrev").classList.remove("hidden");
+    $("photoDel").classList.remove("hidden");
+  } else {
+    $("admPhotoPrev").classList.add("hidden");
+    $("photoDel").classList.add("hidden");
+  }
 }
 async function newBookingNo() {
   for (let i = 0; i < 20; i++) {
@@ -753,6 +825,7 @@ async function init() {
   renderCalendar();
   // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
   fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); }).catch(() => {});
+  fetchPhoto().then(applyPhoto).catch(() => {});
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tab-lookup").addEventListener("click", () => show("lookup"));
   $("tab-admin").addEventListener("click", () => show("admin"));
@@ -767,7 +840,7 @@ async function init() {
       adminAuthed = true;
       $("adminLogin").classList.add("hidden");
       $("adminMain").classList.remove("hidden");
-      renderAdmin(); renderTplList(); renderThemeRow();
+      renderAdmin(); renderTplList(); renderThemeRow(); renderPhotoSetting();
       msg($("pinMsg"), "", true);
     } else {
       msg($("pinMsg"), "暗証番号が違います。");
@@ -781,6 +854,30 @@ async function init() {
     settings.templates.push(v);
     $("tplNew").value = "";
     await saveSettings(settings); renderTplList(); renderAdmin();
+  });
+  $("photoFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const url = await fileToDataURL(f);
+      await savePhoto(url);
+      applyPhoto(url);
+      renderPhotoSetting();
+      msg($("photoMsg"), "写真を変えました。", true);
+    } catch (err) {
+      msg($("photoMsg"), "写真を保存できませんでした。");
+    }
+  });
+  $("photoDel").addEventListener("click", async () => {
+    try {
+      await deletePhoto();
+      applyPhoto("");
+      renderPhotoSetting();
+      msg($("photoMsg"), "写真を消しました。", true);
+    } catch (err) {
+      msg($("photoMsg"), "写真を消せませんでした。");
+    }
   });
   $("pinChange").addEventListener("click", async () => {
     const v = $("pinNew").value.trim();
