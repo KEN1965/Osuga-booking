@@ -52,6 +52,9 @@
   .map-img{width:100%; border-radius:12px; margin-top:8px; display:block;}
   .map-link{display:inline-block; margin-top:6px; font-size:13.5px;}
   .guide-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .guide-thumb{position:relative; padding:0; border:none; background:none; cursor:pointer; border-radius:10px; overflow:hidden; font-family:inherit;}
+  .guide-thumb img{width:100%; aspect-ratio:4/3; object-fit:cover; display:block;}
+  .guide-thumb .gx{position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:14px; line-height:26px; text-align:center;}
   .guide-img{display:block; width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px;}
   .guide-img.solo{grid-column:1 / -1; aspect-ratio:auto; object-fit:contain;}
   .gslot-t{font-size:13px; font-weight:700; margin-bottom:4px;}
@@ -448,7 +451,7 @@
         <h2 class="view-title">設定</h2>
         <label class="f">テーマカラー（アプリ全体の色）</label>
         <div class="theme-row" id="themeRow"></div>
-        <label class="f">最初の画面に出る写真</label>
+        <label class="f">ヘッダー画像</label>
         <img id="admPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
         <div class="grid2" style="margin-top:8px;">
           <label class="btn sub photo-pick" for="photoFile">写真を選ぶ</label>
@@ -457,39 +460,10 @@
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
         <label class="f">案内の写真（申込・見学が終わった画面に出ます）</label>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。</p>
-        <div class="grid2">
-          <div>
-            <div class="gslot-t">写真1</div>
-            <img id="admGuidePrev1" class="adm-photo-prev hidden" alt="案内の写真1">
-            <label class="btn sub photo-pick" for="guideFile1">選ぶ</label>
-            <button class="btn danger photo-pick hidden" id="guideDel1" style="margin-top:6px;">消す</button>
-          </div>
-          <div>
-            <div class="gslot-t">写真2</div>
-            <img id="admGuidePrev2" class="adm-photo-prev hidden" alt="案内の写真2">
-            <label class="btn sub photo-pick" for="guideFile2">選ぶ</label>
-            <button class="btn danger photo-pick hidden" id="guideDel2" style="margin-top:6px;">消す</button>
-          </div>
-        </div>
-        <div class="grid2" style="margin-top:10px;">
-          <div>
-            <div class="gslot-t">写真3</div>
-            <img id="admGuidePrev3" class="adm-photo-prev hidden" alt="案内の写真3">
-            <label class="btn sub photo-pick" for="guideFile3">選ぶ</label>
-            <button class="btn danger photo-pick hidden" id="guideDel3" style="margin-top:6px;">消す</button>
-          </div>
-          <div>
-            <div class="gslot-t">写真4</div>
-            <img id="admGuidePrev4" class="adm-photo-prev hidden" alt="案内の写真4">
-            <label class="btn sub photo-pick" for="guideFile4">選ぶ</label>
-            <button class="btn danger photo-pick hidden" id="guideDel4" style="margin-top:6px;">消す</button>
-          </div>
-        </div>
-        <input type="file" id="guideFile1" accept="image/*" class="hidden">
-        <input type="file" id="guideFile2" accept="image/*" class="hidden">
-        <input type="file" id="guideFile3" accept="image/*" class="hidden">
-        <input type="file" id="guideFile4" accept="image/*" class="hidden">
+        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。写真を押すと消せます。</p>
+        <div class="guide-grid" id="admGuideGrid" style="margin-top:8px;"></div>
+        <label class="btn sub photo-pick" for="guideFiles" id="guideAddLabel" style="margin-top:10px;">写真を選ぶ</label>
+        <input type="file" id="guideFiles" accept="image/*" multiple class="hidden">
         <div id="guideMsg"></div>
         <label class="f">暗証番号の変更（4桁）</label>
         <div class="grid2">
@@ -743,12 +717,39 @@ async function loadGuidePhotos() {
   applyGuidePhotos();
 }
 async function renderGuideSetting() {
+  const grid = $("admGuideGrid");
+  if (!grid) return;
+  let html = "";
+  let count = 0;
   for (const slot of [1, 2, 3, 4]) {
     let url = "";
     try { url = await fetchGuidePhoto(slot); } catch (e) {}
-    const prev = $("admGuidePrev" + slot), del = $("guideDel" + slot);
-    if (url) { prev.src = url; prev.classList.remove("hidden"); del.classList.remove("hidden"); }
-    else { prev.classList.add("hidden"); del.classList.add("hidden"); }
+    guideUrls[slot] = url || "";
+    if (url) {
+      count++;
+      html += '<button class="guide-thumb" data-gslot="' + slot + '"><img src="' + url + '" alt="案内の写真"><span class="gx">✕</span></button>';
+    }
+  }
+  grid.innerHTML = html;
+  grid.classList.toggle("hidden", count === 0);
+  grid.querySelectorAll("button[data-gslot]").forEach((el) =>
+    el.addEventListener("click", async () => {
+      const slot = parseInt(el.getAttribute("data-gslot"), 10);
+      if (!confirm("この写真を消しますか？")) return;
+      try {
+        await deleteGuidePhoto(slot);
+        guideUrls[slot] = "";
+        applyGuidePhotos();
+        renderGuideSetting();
+        msg($("guideMsg"), "写真を消しました。", true);
+      } catch (err) { msg($("guideMsg"), "写真を消せませんでした。"); }
+    }));
+  const label = $("guideAddLabel");
+  if (label) {
+    const rest = 4 - count;
+    label.textContent = rest > 0 ? "写真を選ぶ（あと" + rest + "枚）" : "4枚入っています";
+    label.style.pointerEvents = rest > 0 ? "" : "none";
+    label.style.opacity = rest > 0 ? "" : ".55";
   }
 }
 function applyPhoto(url) {
@@ -1596,33 +1597,26 @@ async function init() {
       msg($("photoMsg"), "写真を消せませんでした。");
     }
   });
-  [1, 2, 3, 4].forEach((slot) => {
-    $("guideFile" + slot).addEventListener("change", async (e) => {
-      const f = e.target.files[0];
-      e.target.value = "";
-      if (!f) return;
+  $("guideFiles").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    const empty = [1, 2, 3, 4].filter((s) => !guideUrls[s]);
+    const use = files.slice(0, empty.length);
+    if (!use.length) { msg($("guideMsg"), "4枚までです。"); return; }
+    let done = 0;
+    for (let i = 0; i < use.length; i++) {
       try {
-        const url = await fileToDataURL(f);
-        await saveGuidePhoto(slot, url);
-        guideUrls[slot] = url;
-        applyGuidePhotos();
-        renderGuideSetting();
-        msg($("guideMsg"), "写真" + slot + "を保存しました。", true);
-      } catch (err) {
-        msg($("guideMsg"), "写真" + slot + "を保存できませんでした。");
-      }
-    });
-    $("guideDel" + slot).addEventListener("click", async () => {
-      try {
-        await deleteGuidePhoto(slot);
-        guideUrls[slot] = "";
-        applyGuidePhotos();
-        renderGuideSetting();
-        msg($("guideMsg"), "写真" + slot + "を消しました。", true);
-      } catch (err) {
-        msg($("guideMsg"), "写真" + slot + "を消せませんでした。");
-      }
-    });
+        const url = await fileToDataURL(use[i]);
+        await saveGuidePhoto(empty[i], url);
+        guideUrls[empty[i]] = url;
+        done++;
+      } catch (err) { /* 失敗した分は飛ばす */ }
+    }
+    applyGuidePhotos();
+    renderGuideSetting();
+    if (done) msg($("guideMsg"), "写真を" + done + "枚、追加しました。", true);
+    else msg($("guideMsg"), "写真を保存できませんでした。");
   });
   $("pinChange").addEventListener("click", async () => {
     const v = $("pinNew").value.trim();
