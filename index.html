@@ -414,14 +414,7 @@
         </div>
         <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
         <div id="admCal" class="cal-grid"></div>
-        <div id="admBatchPanel" style="margin-top:10px;">
-          <div id="admBatchCount" style="font-weight:800;">0日 選んでいます</div>
-          <div class="grid2" style="margin-top:8px;">
-            <button class="btn danger" id="admBatchStop">受け付けない</button>
-            <button class="btn" id="admBatchReopen">受け付ける</button>
-          </div>
-          <p style="font-size:12.5px; color:var(--muted); margin-top:8px;">選んだ日をもう一度押すと、外れます。</p>
-        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:8px;">日を押すと、その日の受付を止められます。もう一度押すと、戻ります。</p>
         <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
         <div id="admList"></div>
         <div id="admTourTitle" style="font-weight:800; margin-top:14px;"></div>
@@ -429,7 +422,6 @@
         <div class="legend" id="admLegendBook" style="margin-top:12px;"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 申込を受け付けない日</span></div>
         <div class="legend hidden" id="admLegendTour" style="margin-top:12px;"><span><i class="dot v"></i>見学あり</span><span>✕ 見学を受け付けない日</span></div>
         <div id="admTourOffNote" class="hidden" style="font-size:12.5px; color:var(--muted); margin-top:4px;">土日の✕は、下の「土日は見学を受けない」によるものです。</div>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:6px;">何も入っていない日は、タップで選べます（連続で選べます）。</p>
         <div id="admTourSetting" class="hidden" style="border-top:1px solid var(--line); margin-top:14px; padding-top:6px;">
           <label class="f">見学の設定</label>
           <div style="font-size:13.5px; font-weight:700;">平日の時間</div>
@@ -459,7 +451,7 @@
         </div>
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
-        <label class="f">案内の写真（申込・見学が終わった画面に出ます）</label>
+        <label class="f">案内の写真（申し込みが終わった画面に出ます）</label>
         <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。写真を押すと消せます。</p>
         <div class="guide-grid" id="admGuideGrid" style="margin-top:8px;"></div>
         <label class="btn sub photo-pick" for="guideFiles" id="guideAddLabel" style="margin-top:10px;">写真を選ぶ</label>
@@ -808,7 +800,6 @@ let settings = Object.assign({}, DEFAULT_SETTINGS);
 let curMonth = new Date(); curMonth.setDate(1);
 let admMonth = new Date(); admMonth.setDate(1);
 let admTab = "book";
-const batchSel = new Set();
 let admDay = dateKey(new Date()); // 管理者カレンダーで選んでいる日
 let sel = { date: null, room: "washitsu", start: null, hours: 1 };
 let dayBookings = [];
@@ -1277,27 +1268,38 @@ async function renderAdmin() {
       if (!other && viewings.some((v) => v.date === key)) dots += '<i class="dot v"></i>';
     }
     const dow = dObj.getDay();
-    cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (batchSel.has(key) ? " bsel" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
+    cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
       + '<span class="' + (key === todayKey && !other ? "today-num" : "num") + '">' + dObj.getDate() + "</span>"
       + '<span class="dots">' + dots + "</span></button>";
   }
   $("admCal").innerHTML = cells;
   $("admCal").querySelectorAll("button[data-admday]").forEach((el) =>
-    el.addEventListener("click", () => {
+    el.addEventListener("click", async () => {
       const k = el.getAttribute("data-admday");
       const d = new Date(k + "T00:00:00");
       const inMonth = d.getMonth() === admMonth.getMonth() && d.getFullYear() === admMonth.getFullYear();
-      const hasBk = isBook ? bookings.some((b) => b.date === k) : viewings.some((v) => v.date === k);
-      // このカレンダーで何も入っていない日は、タップで「選ぶ」（連続で選べる）
-      if (inMonth && !hasBk) {
-        if (batchSel.has(k)) batchSel.delete(k); else batchSel.add(k);
+      admDay = k;
+      if (!inMonth) {
+        // 前月・翌月の日は、その月へ移るだけ（止めたり戻したりはしない）
+        admMonth = new Date(d.getFullYear(), d.getMonth(), 1);
         renderAdmin();
         return;
       }
-      batchSel.clear();
-      admDay = k;
-      admMonth = new Date(d.getFullYear(), d.getMonth(), 1);
-      renderAdmin();
+      // 日を押すたびに、その日の受付を止める／戻す（今見ているカレンダーの分だけ）
+      if (admTab === "book") {
+        const bl = (settings.bookingBlockedDates || []).slice();
+        const i = bl.indexOf(k);
+        if (i >= 0) bl.splice(i, 1); else bl.push(k);
+        settings.bookingBlockedDates = bl;
+      } else {
+        const tl = (settings.tourBlockedDates || []).slice();
+        const j = tl.indexOf(k);
+        if (j >= 0) tl.splice(j, 1); else tl.push(k);
+        settings.tourBlockedDates = tl;
+      }
+      try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
+      await renderAdmin();
+      renderCalendar();
     }));
   // 選んだ日の申込だけをカードで出す
   const dayBookings = bookings.filter((b) => b.date === admDay)
@@ -1343,37 +1345,12 @@ async function renderAdmin() {
     el.addEventListener("click", () => tourAdminAction(el.getAttribute("data-tact"), el.getAttribute("data-no"))));
   syncAdmVisibility();
 }
-// タブと「日を選んでいる間」の表示切り替え
+// タブごとの表示切り替え
 function syncAdmVisibility() {
-  const sel = batchSel.size > 0;
   const isBook = admTab === "book";
-  $("admDayTitle").classList.toggle("hidden", sel);
-  $("admList").classList.toggle("hidden", sel || !isBook);
+  $("admList").classList.toggle("hidden", !isBook);
   $("admTourTitle").classList.toggle("hidden", true);
-  $("admTourList").classList.toggle("hidden", sel || isBook);
-  // 2つのボタンが効く相手：日を選んでいればその日々、選んでいなければ今開いている日
-  $("admBatchCount").textContent = sel ? batchSel.size + "日 選んでいます" : fmtDateJP(admDay);
-}
-// 「受け付けない／受け付ける」を、選んだ日々（なければ今開いている日）に適用する
-async function applyBatch(kind) {
-  const keys = batchSel.size ? Array.from(batchSel) : [admDay];
-  const bl = (settings.bookingBlockedDates || []).slice();
-  const tl = (settings.tourBlockedDates || []).slice();
-  keys.forEach((k) => {
-    if (kind === "booking" && bl.indexOf(k) < 0) bl.push(k);
-    if (kind === "tour" && tl.indexOf(k) < 0) tl.push(k);
-    if (kind === "open") {
-      // 「受け付ける」は、今見ているカレンダーの分だけ戻す
-      if (admTab === "book") { const i = bl.indexOf(k); if (i >= 0) bl.splice(i, 1); }
-      else { const j = tl.indexOf(k); if (j >= 0) tl.splice(j, 1); }
-    }
-  });
-  settings.bookingBlockedDates = bl;
-  settings.tourBlockedDates = tl;
-  try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
-  batchSel.clear();
-  await renderAdmin();
-  renderCalendar();
+  $("admTourList").classList.toggle("hidden", isBook);
 }
 async function tourAdminAction(act, no) {
   const v = await fetchViewing(no);
@@ -1567,10 +1544,8 @@ async function init() {
       msg($("pinMsg"), "暗証番号が違います。");
     }
   });
-  $("admTabBook").addEventListener("click", () => { if (admTab !== "book") { admTab = "book"; batchSel.clear(); renderAdmin(); } });
-  $("admTabTour").addEventListener("click", () => { if (admTab !== "tour") { admTab = "tour"; batchSel.clear(); renderAdmin(); } });
-  $("admBatchStop").addEventListener("click", () => applyBatch(admTab === "book" ? "booking" : "tour"));
-  $("admBatchReopen").addEventListener("click", () => applyBatch("open"));
+  $("admTabBook").addEventListener("click", () => { if (admTab !== "book") { admTab = "book"; renderAdmin(); } });
+  $("admTabTour").addEventListener("click", () => { if (admTab !== "tour") { admTab = "tour"; renderAdmin(); } });
   $("admPrev").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() - 1); admDay = pickAdmDay(); renderAdmin(); });
   $("admNext").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() + 1); admDay = pickAdmDay(); renderAdmin(); });
   $("photoFile").addEventListener("change", async (e) => {
