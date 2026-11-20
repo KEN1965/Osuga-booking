@@ -192,7 +192,7 @@
 <div class="wrap">
   <header class="app">
     <div id="photoArea" class="photo-area hidden">
-      <img id="hallPhoto" alt="駅前集会所（大須賀集会所）の写真">
+      <img id="hallPhoto" alt="駅前集会所（大須賀集会所）の写真" onerror="document.getElementById('photoArea').classList.add('hidden')">
     </div>
     <h1>駅前集会所（大須賀集会所）</h1>
     <p>ご利用の申し込み</p>
@@ -444,6 +444,7 @@
         <label class="f">テーマカラー（アプリ全体の色）</label>
         <div class="theme-row" id="themeRow"></div>
         <label class="f">ヘッダー画像</label>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">はじめは見本の写真が入っています。写真を選ぶと差し替わります。</p>
         <img id="admPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
         <div class="grid2" style="margin-top:8px;">
           <label class="btn sub photo-pick" for="photoFile">写真を選ぶ</label>
@@ -452,7 +453,7 @@
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
         <label class="f">案内の写真（申し込みが終わった画面に出ます）</label>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。写真を押すと消せます。</p>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。写真を押すと消せます。はじめは見本が2枚（和室・ホール）入っています。</p>
         <div class="guide-grid" id="admGuideGrid" style="margin-top:8px;"></div>
         <label class="btn sub photo-pick" for="guideFiles" id="guideAddLabel" style="margin-top:10px;">写真を選ぶ</label>
         <input type="file" id="guideFiles" accept="image/*" multiple class="hidden">
@@ -517,7 +518,7 @@ const THEMES = {
   purple: { accent:"#8b5cc7", dark:"#6f43a8", soft:"#f1eafd", label:"紫" }
 };
 const DEFAULT_TEMPLATES = ["確定しました。", "受け付けました。", "時間の相談をさせてください。", "お電話いただけますか。"];
-const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false };
+const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false, headerSampleOff: false, guideSampleOff: false };
 
 /* ---------- 小物 ---------- */
 const $ = (id) => document.getElementById(id);
@@ -684,9 +685,21 @@ async function deleteGuidePhoto(slot) {
   await db.collection("settings").doc("guide" + slot).delete();
 }
 let guideUrls = { 1: "", 2: "", 3: "", 4: "" };
+// はじめに入っている見本の写真（写真ファイルとして横に置く）
+const GUIDE_SAMPLES = ["washitsu-sample.jpg", "hall-sample.jpg"];
+const HEADER_SAMPLE = "header-sample.jpg";
+function effectivePhoto(saved) {
+  return saved || (settings.headerSampleOff ? "" : HEADER_SAMPLE);
+}
+function displayGuideUrls() {
+  const saved = [1, 2, 3, 4].map((s) => guideUrls[s] || "").filter(Boolean);
+  if (saved.length) return saved;
+  return settings.guideSampleOff ? [] : GUIDE_SAMPLES.slice();
+}
 function applyGuidePhotos() {
+  const list = displayGuideUrls();
   [1, 2, 3, 4].forEach((slot) => {
-    const url = guideUrls[slot] || "";
+    const url = list[slot - 1] || "";
     ["doneGuide", "tourGuide"].forEach((pre) => {
       const img = $(pre + slot);
       if (!img) return;
@@ -722,8 +735,21 @@ async function renderGuideSetting() {
       html += '<button class="guide-thumb" data-gslot="' + slot + '"><img src="' + url + '" alt="案内の写真"><span class="gx">✕</span></button>';
     }
   }
+  const showSample = count === 0 && !settings.guideSampleOff;
+  if (showSample) {
+    html = GUIDE_SAMPLES.map((u) => '<button class="guide-thumb" data-gsample="1"><img src="' + u + '" alt="見本の写真"><span class="gx">✕</span></button>').join("");
+  }
   grid.innerHTML = html;
-  grid.classList.toggle("hidden", count === 0);
+  grid.classList.toggle("hidden", count === 0 && !showSample);
+  grid.querySelectorAll("button[data-gsample]").forEach((el) =>
+    el.addEventListener("click", async () => {
+      if (!confirm("見本の写真を消しますか？")) return;
+      settings.guideSampleOff = true;
+      try { await saveSettings(settings); } catch (e) {}
+      applyGuidePhotos();
+      renderGuideSetting();
+      msg($("guideMsg"), "見本の写真を消しました。", true);
+    }));
   grid.querySelectorAll("button[data-gslot]").forEach((el) =>
     el.addEventListener("click", async () => {
       const slot = parseInt(el.getAttribute("data-gslot"), 10);
@@ -778,8 +804,9 @@ function fileToDataURL(file) {
 async function renderPhotoSetting() {
   let url = "";
   try { url = await fetchPhoto(); } catch (e) {}
-  if (url) {
-    $("admPhotoPrev").src = url;
+  const eff = effectivePhoto(url);
+  if (eff) {
+    $("admPhotoPrev").src = eff;
     $("admPhotoPrev").classList.remove("hidden");
     $("photoDel").classList.remove("hidden");
   } else {
@@ -1503,8 +1530,8 @@ async function init() {
   renderDow();
   renderCalendar();
   // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
-  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); }).catch(() => {});
-  fetchPhoto().then(applyPhoto).catch(() => {});
+  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {}); applyGuidePhotos(); }).catch(() => {});
+  fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {});
   loadGuidePhotos();
   renderLastBar();
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
@@ -1566,8 +1593,15 @@ async function init() {
   });
   $("photoDel").addEventListener("click", async () => {
     try {
-      await deletePhoto();
-      applyPhoto("");
+      const saved = await fetchPhoto();
+      if (saved) {
+        await deletePhoto();
+        applyPhoto(effectivePhoto(""));
+      } else {
+        settings.headerSampleOff = true;
+        await saveSettings(settings);
+        applyPhoto("");
+      }
       renderPhotoSetting();
       msg($("photoMsg"), "写真を消しました。", true);
     } catch (err) {
