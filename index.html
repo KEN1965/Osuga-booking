@@ -287,7 +287,7 @@
         </div>
         <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
         <div id="admCal" class="cal-grid"></div>
-        <div class="legend"><span><i class="dot dot-t"></i>仮予約あり</span><span><i class="dot dot-c"></i>確定あり</span><span>✕ 受付停止</span></div>
+        <div class="legend"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 受付停止</span></div>
         <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
         <div id="admBlockRow"></div>
         <div id="admList"></div>
@@ -866,8 +866,8 @@ async function renderAdmin() {
     let dots = "";
     if (blk) dots = '<span class="blockx">✕</span>';
     else {
-      if (st.t) dots += '<i class="dot dot-t"></i>';
-      if (st.c) dots += '<i class="dot dot-c"></i>';
+      if (st.t) dots += '<i class="dot t"></i>';
+      if (st.c) dots += '<i class="dot c"></i>';
     }
     const dow = dObj.getDay();
     cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
