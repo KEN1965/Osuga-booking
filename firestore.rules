@@ -1,0 +1,17 @@
+rules_version = '2';
+// 駅前集会所（大須賀集会所）予約アプリ用
+// ログインなしで使う小さな施設向けの設定です。
+// 申込データの読み書きを公開し、管理操作はアプリ内の暗証番号で守ります。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /bookings/{id} {
+      allow read, write: if true;
+    }
+    match /viewings/{id} {
+      allow read, write: if true;
+    }
+    match /settings/{id} {
+      allow read, write: if true;
+    }
+  }
+}

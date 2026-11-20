@@ -76,6 +76,7 @@
   .dots{display:flex; gap:3px; height:8px; align-items:center;}
   .dot{width:8px; height:8px; border-radius:50%;}
   .dot.t{background:var(--tentative);} .dot.c{background:var(--confirmed);}
+  .dot.v{background:#3b82f6;}
   .legend{display:flex; gap:16px; justify-content:center; margin-top:10px; font-size:12.5px; color:var(--muted);}
   .legend .dot{display:inline-block; vertical-align:-1px; margin-right:4px;}
   .cal-note{text-align:center; font-size:13px; color:var(--muted); margin-top:8px;}
@@ -119,7 +120,7 @@
   }
   .price-box .total{font-size:20px; font-weight:800; color:var(--accent-dark);}
   label.f{display:block; font-size:13.5px; font-weight:700; margin:13px 0 5px;}
-  input[type=text],input[type=tel],input[type=password],textarea,select{
+  input[type=text],input[type=tel],input[type=password],input[type=email],textarea,select{
     width:100%; border:2px solid var(--line); border-radius:10px; padding:10px 12px;
     font-size:16px; font-family:inherit; background:#fff; color:var(--ink);
   }
@@ -200,6 +201,11 @@
       </div>
       <div class="cal-note">日にちを押すと、その日の申し込みができます</div>
     </div>
+    <div class="card" style="margin-top:12px; text-align:center;">
+      <div style="font-weight:800; font-size:16px;">見学もできます</div>
+      <p style="font-size:13.5px; color:var(--muted); margin-top:4px;">施設を見てみたい方は、見学の申し込みができます。</p>
+      <button class="btn" id="tourBtn" style="margin-top:10px;">見学を申し込む</button>
+    </div>
   </section>
 
   <!-- 申込 -->
@@ -254,6 +260,49 @@
     </div>
   </section>
 
+  <!-- 見学 -->
+  <section id="view-tour" class="hidden">
+    <button class="backbtn" id="tourBack">‹ カレンダーに戻る</button>
+    <div class="card">
+      <h2 class="view-title">見学の申し込み</h2>
+      <div class="cal-head">
+        <button id="tourPrev" aria-label="前の月">‹</button>
+        <div class="ym" id="tourYM"></div>
+        <button id="tourNext" aria-label="次の月">›</button>
+      </div>
+      <div class="cal-grid" id="tourDow"></div>
+      <div class="cal-grid" id="tourGrid"></div>
+      <div class="legend"><span>✕ 受付停止の日は選べません</span></div>
+      <div id="tourForm" class="hidden">
+        <h3 id="tourDateTitle" style="margin-top:14px; font-size:16px;"></h3>
+        <label class="f">開始時刻</label>
+        <div class="slots" id="tourSlots"></div>
+        <label class="f">お名前</label>
+        <input type="text" id="tName" maxlength="30" placeholder="例：山田 花子">
+        <label class="f">電話番号</label>
+        <input type="tel" id="tPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
+        <label class="f">メールアドレス（任意）</label>
+        <input type="email" id="tEmail" maxlength="80" autocomplete="email" placeholder="例：xxx@example.com">
+        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">確定するとメールが届きます。</p>
+        <label class="f">聞きたいこと（任意）</label>
+        <textarea id="tNote" rows="3" maxlength="200" placeholder="例：和室を見たいです、など"></textarea>
+        <div id="tourMsg"></div>
+        <button class="btn" id="tourSubmit">この内容で申し込む</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 見学の受付完了 -->
+  <section id="view-tourdone" class="hidden">
+    <div class="card" style="text-align:center;">
+      <h2 class="view-title">見学の申し込みを受け付けました</h2>
+      <p style="margin:6px 0;">あなたの見学番号</p>
+      <div class="big-no" id="tourDoneNo"></div>
+      <p style="font-size:14px; color:var(--muted);">管理運営委員会から、メールか電話で連絡します。<br>変更や取り消しはお電話ください。</p>
+      <button class="btn sub" id="tourDoneBack">カレンダーに戻る</button>
+    </div>
+  </section>
+
   <!-- 確認・修正 -->
   <section id="view-lookup" class="hidden">
     <div class="card">
@@ -287,10 +336,12 @@
         </div>
         <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
         <div id="admCal" class="cal-grid"></div>
-        <div class="legend"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 受付停止</span></div>
+        <div class="legend"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span><i class="dot v"></i>見学あり</span><span>✕ 受付停止</span></div>
         <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
         <div id="admBlockRow"></div>
         <div id="admList"></div>
+        <div id="admTourTitle" style="font-weight:800; margin-top:14px;"></div>
+        <div id="admTourList"></div>
       </div>
       <div class="card" style="margin-top:12px;">
         <h2 class="view-title">設定</h2>
@@ -398,6 +449,7 @@ function slotState(bookings, room, start, end) {
 /* ---------- データ層（Firebase / 練習モード共通の入口） ---------- */
 const LS_BK = "oosuga_bookings_v1";
 const LS_ST = "oosuga_settings_v1";
+const LS_TOUR = "oosuga_viewings_v1";
 function lsRead(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch (e) { return fallback; }
@@ -439,6 +491,41 @@ async function saveBooking(bk) {
   }
   if (!db) throw new Error("no db");
   await db.collection("bookings").doc(bk.no).set(bk);
+}
+/* ---------- 見学データ ---------- */
+async function fetchViewingsInMonth(ymPrefix) {
+  if (DEMO) {
+    const all = lsRead(LS_TOUR, []);
+    return all.filter((v) => v.date.indexOf(ymPrefix) === 0);
+  }
+  if (!db) return [];
+  const snap = await withTimeout(db.collection("viewings")
+    .where("date", ">=", ymPrefix + "-01").where("date", "<=", ymPrefix + "-31").get(), 6000);
+  return snap.docs.map((d) => d.data());
+}
+async function fetchViewing(no) {
+  if (DEMO) return lsRead(LS_TOUR, []).find((v) => v.no === no) || null;
+  if (!db) return null;
+  const doc = await db.collection("viewings").doc(no).get();
+  return doc.exists ? doc.data() : null;
+}
+async function saveViewing(v) {
+  if (DEMO) {
+    const all = lsRead(LS_TOUR, []);
+    const i = all.findIndex((x) => x.no === v.no);
+    if (i >= 0) all[i] = v; else all.push(v);
+    lsWrite(LS_TOUR, all);
+    return;
+  }
+  if (!db) throw new Error("no db");
+  await db.collection("viewings").doc(v.no).set(v);
+}
+async function newViewingNo() {
+  for (let i = 0; i < 20; i++) {
+    const no = String(Math.floor(100000 + Math.random() * 900000));
+    if (!(await fetchViewing(no))) return no;
+  }
+  return String(Date.now()).slice(-6);
 }
 async function fetchSettings() {
   if (DEMO) return Object.assign({}, DEFAULT_SETTINGS, lsRead(LS_ST, {}));
@@ -545,8 +632,8 @@ function applyTheme(name) {
 function show(view) {
   curView = view;
   syncPhoto();
-  ["cal", "book", "done", "lookup", "admin"].forEach((v) => $("view-" + v).classList.toggle("hidden", v !== view));
-  $("tab-cal").classList.toggle("active", view === "cal" || view === "book" || view === "done");
+  ["cal", "book", "done", "lookup", "admin", "tour", "tourdone"].forEach((v) => $("view-" + v).classList.toggle("hidden", v !== view));
+  $("tab-cal").classList.toggle("active", view === "cal" || view === "book" || view === "done" || view === "tour" || view === "tourdone");
   $("tab-lookup").classList.toggle("active", view === "lookup");
   $("tab-admin").classList.toggle("active", view === "admin");
   const sa = $("scrollArea");
@@ -740,6 +827,84 @@ function statusPill(st) {
     ? '<span class="status-pill c">確定</span>'
     : '<span class="status-pill t">仮予約（確認待ち）</span>';
 }
+/* ---------- 見学の申し込み ---------- */
+let tourMonth = new Date(); tourMonth.setDate(1);
+let tourSel = { date: null, start: null };
+function renderTourCalendar() {
+  const y = tourMonth.getFullYear(), m = tourMonth.getMonth();
+  $("tourYM").textContent = y + "年 " + (m + 1) + "月";
+  const names = ["日", "月", "火", "水", "木", "金", "土"];
+  $("tourDow").innerHTML = names.map((n, i) =>
+    '<div class="cal-dow' + (i === 0 ? " sun" : i === 6 ? " sat" : "") + '">' + n + "</div>").join("");
+  const first = new Date(y, m, 1);
+  const startDay = new Date(y, m, 1 - first.getDay());
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const cellCount = Math.ceil((first.getDay() + daysInMonth) / 7) * 7;
+  const todayK = dateKey(new Date());
+  let html = "";
+  for (let i = 0; i < cellCount; i++) {
+    const d = new Date(startDay); d.setDate(startDay.getDate() + i);
+    const k = dateKey(d);
+    const inMonth = d.getMonth() === m;
+    const dow = d.getDay();
+    const past = k < todayK;
+    const blk = inMonth && isBlocked(k);
+    html += '<button class="cal-cell' + (dow === 0 ? " sun" : dow === 6 ? " sat" : "")
+      + (inMonth ? "" : " dim") + (past && inMonth ? " past" : "") + (blk ? " blocked" : "")
+      + (tourSel.date === k ? " sel" : "") + '" data-tdate="' + k + '"' + (inMonth && !past && !blk ? "" : " disabled") + '>'
+      + '<span class="num">' + d.getDate() + "</span>"
+      + '<span class="dots">' + (blk ? '<span class="blockx">✕</span>' : "") + "</span>"
+      + "</button>";
+  }
+  $("tourGrid").innerHTML = html;
+  $("tourGrid").querySelectorAll(".cal-cell[data-tdate]").forEach((el) => {
+    el.addEventListener("click", () => {
+      tourSel = { date: el.getAttribute("data-tdate"), start: null };
+      renderTourCalendar();
+      renderTourSlots();
+      $("tourDateTitle").textContent = fmtDateJP(tourSel.date) + "の見学";
+      $("tourForm").classList.remove("hidden");
+      msg($("tourMsg"), "", true);
+    });
+    if (el.getAttribute("data-tdate") === todayK) el.classList.add("today");
+  });
+}
+function renderTourSlots() {
+  const now = new Date();
+  const isToday = tourSel.date === dateKey(now);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  let html = "";
+  for (let t = OPEN_MIN; t < CLOSE_MIN; t += 30) {
+    const dis = isToday && t <= nowMin;
+    html += '<button class="slot' + (tourSel.start === t ? " sel" : "") + '" data-tt="' + t + '"' + (dis ? " disabled" : "") + '>'
+      + '<div class="st">' + minToStr(t) + "</div>"
+      + '<div class="ss">' + (dis ? "終了" : "見学") + "</div></button>";
+  }
+  $("tourSlots").innerHTML = html;
+  $("tourSlots").querySelectorAll("button[data-tt]").forEach((el) =>
+    el.addEventListener("click", () => { tourSel.start = parseInt(el.getAttribute("data-tt"), 10); renderTourSlots(); }));
+}
+async function submitTour() {
+  const name = $("tName").value.trim(), phone = $("tPhone").value.trim(),
+        email = $("tEmail").value.trim(), note = $("tNote").value.trim();
+  if (!tourSel.date) { msg($("tourMsg"), "日にちを選んでください。"); return; }
+  if (tourSel.start == null) { msg($("tourMsg"), "開始時刻を選んでください。"); return; }
+  if (!name || !phoneNorm(phone)) { msg($("tourMsg"), "お名前と電話番号を書いてください。"); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("tourMsg"), "メールアドレスを確認してください。"); return; }
+  if (isBlocked(tourSel.date)) { msg($("tourMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
+  try {
+    const no = await newViewingNo();
+    await saveViewing({
+      no: no, date: tourSel.date, startMin: tourSel.start,
+      name: name, phone: phone, email: email, note: note,
+      status: "tentative", createdAt: new Date().toISOString()
+    });
+    $("tourDoneNo").textContent = no;
+    show("tourdone");
+  } catch (e) {
+    msg($("tourMsg"), "送れませんでした。電波の良いところでもう一度お試しください。");
+  }
+}
 function detailHTML(b) {
   const r = ROOMS[b.room];
   let h = '<div style="margin-top:12px;">'
@@ -847,6 +1012,9 @@ async function renderAdmin() {
   let bookings = [];
   try { bookings = await fetchBookingsInMonth(y + "-" + pad(m + 1)); } catch (e) { /* 空で出す */ }
   bookings = bookings.filter((b) => b.status !== "cancelled");
+  let viewings = [];
+  try { viewings = await fetchViewingsInMonth(y + "-" + pad(m + 1)); } catch (e) { /* 空で出す */ }
+  viewings = viewings.filter((v) => v.status !== "cancelled");
   // 管理者カレンダー（申込側と同じ見た目）
   const startDow = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -868,6 +1036,7 @@ async function renderAdmin() {
     else {
       if (st.t) dots += '<i class="dot t"></i>';
       if (st.c) dots += '<i class="dot c"></i>';
+      if (viewings.some((v) => v.date === key)) dots += '<i class="dot v"></i>';
     }
     const dow = dObj.getDay();
     cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
@@ -890,8 +1059,8 @@ async function renderAdmin() {
   $("admBlockRow").innerHTML = (blkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は受付を停止しています</div>' : "")
     + '<button class="btn sub" id="admBlockBtn">' + (blkNow ? "受け付けを再開する" : "この日は受け付けない") + "</button>";
   $("admBlockBtn").addEventListener("click", toggleBlockDay);
-  if (!dayBookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px;">この日の申込はありません</p>'; return; }
-  $("admList").innerHTML = dayBookings.map((b) => {
+  if (!dayBookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px;">この日の申込はありません</p>'; }
+  else $("admList").innerHTML = dayBookings.map((b) => {
     const r = ROOMS[b.room];
     return '<div class="bk"><div class="bk-head"><div class="bk-when">' + minToStr(b.startMin) + "〜" + minToStr(b.endMin) + "　" + r.name + "</div>" + statusPill(b.status) + "</div>"
       + (b.title ? '<div style="font-size:16px; font-weight:800; margin-top:2px;">' + esc(b.title) + "</div>" : "")
@@ -916,6 +1085,53 @@ async function renderAdmin() {
     el.addEventListener("click", () => adminAction(el.getAttribute("data-act"), el.getAttribute("data-no"))));
   $("admList").querySelectorAll("button[data-tpl]").forEach((el) =>
     el.addEventListener("click", () => { $("replyText-" + el.getAttribute("data-no")).value = el.getAttribute("data-tpl"); }));
+  // その日の見学
+  const dayTours = viewings.filter((v) => v.date === admDay)
+    .sort((a, b) => a.startMin - b.startMin);
+  $("admTourTitle").textContent = dayTours.length ? fmtDateJP(admDay) + "の見学" : "";
+  $("admTourList").innerHTML = dayTours.map((v) => {
+    return '<div class="bk"><div class="bk-head"><div class="bk-when">' + minToStr(v.startMin) + "〜　見学</div>"
+      + (v.status === "confirmed" ? '<span class="status-pill c">見学確定</span>' : '<span class="status-pill t">見学（確認待ち）</span>') + "</div>"
+      + '<div class="bk-meta">' + esc(v.name) + " 様／" + esc(v.phone) + (v.email ? "／" + esc(v.email) : "") + "／見学番号 " + v.no + "</div>"
+      + (v.note ? '<div class="detail-block">' + esc(v.note) + "</div>" : "")
+      + '<div class="bk-actions">'
+      + (v.status === "tentative" ? '<button class="primary" data-tact="confirm" data-no="' + v.no + '">確定する</button>' : "")
+      + (v.email ? '<button data-tact="mail" data-no="' + v.no + '">メールで知らせる</button>' : "")
+      + '<button data-tact="tel" data-no="' + v.no + '">電話する</button>'
+      + '<button class="warn" data-tact="cancel" data-no="' + v.no + '">取り消す</button>'
+      + "</div></div>";
+  }).join("");
+  $("admTourList").querySelectorAll("button[data-tact]").forEach((el) =>
+    el.addEventListener("click", () => tourAdminAction(el.getAttribute("data-tact"), el.getAttribute("data-no"))));
+}
+async function tourAdminAction(act, no) {
+  const v = await fetchViewing(no);
+  if (!v) return;
+  if (act === "tel") { location.href = "tel:" + v.phone.replace(/[^0-9+]/g, ""); return; }
+  if (act === "mail") {
+    if (!v.email) return;
+    const subject = "【駅前集会所】見学のご案内";
+    const lines = [
+      v.name + " 様",
+      "",
+      "見学の申し込みを受け付けました。",
+      fmtDateJP(v.date) + " " + minToStr(v.startMin) + "にお待ちしています。",
+      "",
+      "お問い合わせ：090-9500-6371",
+      "",
+      "駅前集会所（大須賀集会所）管理運営委員会"
+    ];
+    location.href = "mailto:" + encodeURIComponent(v.email)
+      + "?subject=" + encodeURIComponent(subject)
+      + "&body=" + encodeURIComponent(lines.join("\n"));
+    return;
+  }
+  if (act === "confirm") { v.status = "confirmed"; await saveViewing(v); }
+  if (act === "cancel") {
+    if (!confirm("この見学を取り消しますか？")) return;
+    v.status = "cancelled"; await saveViewing(v);
+  }
+  renderAdmin();
 }
 async function adminAction(act, no) {
   if (act === "reply") { $("reply-" + no).classList.toggle("hidden"); return; }
@@ -999,6 +1215,12 @@ async function init() {
   $("bookBack").addEventListener("click", () => { editingNo = null; show("cal"); renderCalendar(); });
   $("bookSubmit").addEventListener("click", submitBooking);
   $("doneBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
+  $("tourBtn").addEventListener("click", () => { show("tour"); renderTourCalendar(); });
+  $("tourBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
+  $("tourPrev").addEventListener("click", () => { tourMonth.setMonth(tourMonth.getMonth() - 1); renderTourCalendar(); });
+  $("tourNext").addEventListener("click", () => { tourMonth.setMonth(tourMonth.getMonth() + 1); renderTourCalendar(); });
+  $("tourSubmit").addEventListener("click", submitTour);
+  $("tourDoneBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("lkBtn").addEventListener("click", doLookup);
   $("pinBtn").addEventListener("click", () => {
     if ($("pinInput").value === settings.pin) {
