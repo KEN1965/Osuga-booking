@@ -1305,7 +1305,7 @@ async function renderAdmin() {
   const dayBookings = bookings.filter((b) => b.date === admDay)
     .sort((a, b) => (a.startMin - b.startMin) || (a.status === b.status ? 0 : a.status === "tentative" ? -1 : 1));
   $("admDayTitle").textContent = fmtDateJP(admDay) + (isBook ? "の申込" : "の見学");
-  if (!dayBookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px;">この日の申込はありません</p>'; }
+  if (!dayBookings.length) { $("admList").innerHTML = ""; }
   else $("admList").innerHTML = dayBookings.map((b) => {
     const r = ROOMS[b.room];
     return '<div class="bk"><div class="bk-head"><div class="bk-when">' + minToStr(b.startMin) + "〜" + minToStr(b.endMin) + "　" + r.name + "</div>" + statusPill(b.status) + "</div>"
@@ -1343,6 +1343,8 @@ async function renderAdmin() {
   }).join("");
   $("admTourList").querySelectorAll("button[data-tact]").forEach((el) =>
     el.addEventListener("click", () => tourAdminAction(el.getAttribute("data-tact"), el.getAttribute("data-no"))));
+  // 申込も見学もない日は、見出しも出さない
+  $("admDayTitle").classList.toggle("hidden", isBook ? dayBookings.length === 0 : dayTours.length === 0);
   syncAdmVisibility();
 }
 // タブごとの表示切り替え
