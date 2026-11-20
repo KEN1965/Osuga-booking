@@ -390,25 +390,27 @@
         <div id="admTourList"></div>
         <div class="legend" id="admLegendBook" style="margin-top:12px;"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 申込を受け付けない日</span></div>
         <div class="legend hidden" id="admLegendTour" style="margin-top:12px;"><span><i class="dot v"></i>見学あり</span><span>✕ 見学を受け付けない日</span></div>
-        <div id="admTourOffNote" class="hidden" style="font-size:12.5px; color:var(--muted); margin-top:4px;">土日の✕は、設定の「土日は見学を受けない」によるものです。</div>
+        <div id="admTourOffNote" class="hidden" style="font-size:12.5px; color:var(--muted); margin-top:4px;">土日の✕は、下の「土日は見学を受けない」によるものです。</div>
         <p style="font-size:12.5px; color:var(--muted); margin-top:6px;">何も入っていない日は、タップで選べます（連続で選べます）。</p>
+        <div id="admTourSetting" class="hidden" style="border-top:1px solid var(--line); margin-top:14px; padding-top:6px;">
+          <label class="f">見学の設定</label>
+          <div style="font-size:13.5px; font-weight:700;">平日の時間</div>
+          <div class="grid2">
+            <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSel"></select></div>
+            <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSel"></select></div>
+          </div>
+          <div style="font-size:13.5px; font-weight:700; margin-top:10px;">土日の時間</div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px; margin-top:4px;"><input type="checkbox" id="tourWeekendOff" style="width:20px; height:20px; flex:none;">土日は見学を受けない</label>
+          <div class="grid2" id="tourWeRow">
+            <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSelWE"></select></div>
+            <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSelWE"></select></div>
+          </div>
+          <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">特定の日を見学なしにするのは、上のカレンダーで日を選んで設定します。</p>
+          <div id="tourTimeMsg"></div>
+        </div>
       </div>
       <div class="card" style="margin-top:12px;">
         <h2 class="view-title">設定</h2>
-        <label class="f">見学の設定</label>
-        <div style="font-size:13.5px; font-weight:700;">平日の時間</div>
-        <div class="grid2">
-          <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSel"></select></div>
-          <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSel"></select></div>
-        </div>
-        <div style="font-size:13.5px; font-weight:700; margin-top:10px;">土日の時間</div>
-        <label style="display:flex; align-items:center; gap:8px; font-size:14px; margin-top:4px;"><input type="checkbox" id="tourWeekendOff" style="width:20px; height:20px; flex:none;">土日は見学を受けない</label>
-        <div class="grid2" id="tourWeRow">
-          <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSelWE"></select></div>
-          <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSelWE"></select></div>
-        </div>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">特定の日を見学なしにするのは、管理の「見学」カレンダーで日を選んで設定します。</p>
-        <div id="tourTimeMsg"></div>
         <label class="f">テーマカラー（アプリ全体の色）</label>
         <div class="theme-row" id="themeRow"></div>
         <label class="f">最初の画面に出る写真</label>
@@ -1157,6 +1159,7 @@ async function renderAdmin() {
   $("admTabTour").className = "btn" + (isBook ? " sub" : "");
   $("admLegendBook").classList.toggle("hidden", !isBook);
   $("admLegendTour").classList.toggle("hidden", isBook);
+  $("admTourSetting").classList.toggle("hidden", isBook);
   $("admTourOffNote").classList.toggle("hidden", isBook || !settings.tourWeekendOff);
   let bookings = [];
   try { bookings = await fetchBookingsInMonth(y + "-" + pad(m + 1)); } catch (e) { /* 空で出す */ }
