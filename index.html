@@ -491,12 +491,6 @@
         <input type="file" id="guideFile3" accept="image/*" class="hidden">
         <input type="file" id="guideFile4" accept="image/*" class="hidden">
         <div id="guideMsg"></div>
-        <label class="f">返信の定型文</label>
-        <div id="tplList"></div>
-        <div class="grid2" style="margin-top:8px;">
-          <input type="text" id="tplNew" maxlength="60" placeholder="新しい定型文">
-          <button class="btn sub" id="tplAdd" style="margin-top:0; padding:10px;">追加</button>
-        </div>
         <label class="f">暗証番号の変更（4桁）</label>
         <div class="grid2">
           <input type="password" id="pinNew" maxlength="4" inputmode="numeric" autocomplete="off">
@@ -1145,8 +1139,6 @@ function detailHTML(b) {
     + (b.people ? "／" + esc(b.people) + "人" : "") + (b.email ? "<br>" + esc(b.email) : "") + "</div>";
   if (b.purpose) h += '<label class="f">使用目的</label><div class="detail-block">' + esc(b.purpose) + "</div>";
   if (b.note) h += '<label class="f">備考</label><div class="detail-block">' + esc(b.note) + "</div>";
-  if (b.reply) h += '<div class="reply-block"><b>管理運営委員会からの返信</b><br>' + esc(b.reply)
-    + (b.replyAt ? '<div class="rt">' + esc(new Date(b.replyAt).toLocaleString("ja-JP")) + "</div>" : "") + "</div>";
   h += "</div>";
   return h;
 }
@@ -1319,24 +1311,16 @@ async function renderAdmin() {
       + "／" + (r.price * (b.endMin - b.startMin) / 60).toLocaleString() + "円／申込番号 " + b.no + "</div>"
       + (b.purpose ? '<div class="detail-block">' + esc(b.purpose) + "</div>" : "")
       + (b.note ? '<div class="detail-block">' + esc(b.note) + "</div>" : "")
-      + (b.reply ? '<div class="reply-block">' + esc(b.reply) + "</div>" : "")
       + '<div class="bk-actions">'
       + (b.status === "tentative" ? '<button class="primary" data-act="confirmMail" data-no="' + b.no + '">確定してメールで知らせる</button>' : "")
-      + '<button data-act="reply" data-no="' + b.no + '">返信する</button>'
       + (b.email ? '<button data-act="mail" data-no="' + b.no + '">メールで知らせる</button>' : "")
       + (b.status === "confirmed" ? '<button data-act="unconfirm" data-no="' + b.no + '">仮予約に戻す</button>' : "")
       + '<button class="warn" data-act="cancel" data-no="' + b.no + '">取り消す</button>'
       + "</div>"
-      + '<div class="hidden" id="reply-' + b.no + '"><div class="tpl-chips">'
-      + settings.templates.map((t) => '<button data-tpl="' + esc(t) + '" data-no="' + b.no + '">' + esc(t) + "</button>").join("")
-      + '</div><textarea id="replyText-' + b.no + '" rows="3" maxlength="300" placeholder="返信の内容"></textarea>'
-      + '<button class="btn" data-act="sendReply" data-no="' + b.no + '" style="margin-top:8px;">この返信を送る</button></div>'
       + "</div>";
   }).join("");
   $("admList").querySelectorAll("button[data-act]").forEach((el) =>
     el.addEventListener("click", () => adminAction(el.getAttribute("data-act"), el.getAttribute("data-no"))));
-  $("admList").querySelectorAll("button[data-tpl]").forEach((el) =>
-    el.addEventListener("click", () => { $("replyText-" + el.getAttribute("data-no")).value = el.getAttribute("data-tpl"); }));
   // その日の見学
   const dayTours = viewings.filter((v) => v.date === admDay)
     .sort((a, b) => a.startMin - b.startMin);
@@ -1429,7 +1413,6 @@ async function tourAdminAction(act, no) {
   renderAdmin();
 }
 async function adminAction(act, no) {
-  if (act === "reply") { $("reply-" + no).classList.toggle("hidden"); return; }
   const bk = await fetchBooking(no);
   if (!bk) return;
   if (act === "mail") {
@@ -1471,24 +1454,7 @@ async function adminAction(act, no) {
     if (!confirm("この申込を取り消しますか？")) return;
     bk.status = "cancelled"; await saveBooking(bk);
   }
-  if (act === "sendReply") {
-    const text = $("replyText-" + no).value.trim();
-    if (!text) return;
-    bk.reply = text; bk.replyAt = new Date().toISOString();
-    await saveBooking(bk);
-  }
   renderAdmin();
-}
-function renderTplList() {
-  $("tplList").innerHTML = settings.templates.map((t, i) =>
-    '<div style="display:flex; gap:7px; align-items:center; margin-top:6px;">'
-    + '<div style="flex:1; font-size:14.5px;">' + esc(t) + "</div>"
-    + '<button class="backbtn" data-tpldel="' + i + '" style="color:var(--confirmed);">消す</button></div>').join("");
-  $("tplList").querySelectorAll("button[data-tpldel]").forEach((el) =>
-    el.addEventListener("click", async () => {
-      settings.templates.splice(parseInt(el.getAttribute("data-tpldel"), 10), 1);
-      await saveSettings(settings); renderTplList(); renderAdmin();
-    }));
 }
 // 見学の設定（管理者）：平日・土日の時間と、土日休み
 function renderTourTimeSetting() {
@@ -1594,7 +1560,7 @@ async function init() {
       adminAuthed = true;
       $("adminLogin").classList.add("hidden");
       $("adminMain").classList.remove("hidden");
-      renderAdmin(); renderTplList(); renderThemeRow(); renderPhotoSetting(); renderGuideSetting(); renderTourTimeSetting();
+      renderAdmin(); renderThemeRow(); renderPhotoSetting(); renderGuideSetting(); renderTourTimeSetting();
       msg($("pinMsg"), "", true);
     } else {
       msg($("pinMsg"), "暗証番号が違います。");
@@ -1606,13 +1572,6 @@ async function init() {
   $("admBatchReopen").addEventListener("click", () => applyBatch("open"));
   $("admPrev").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() - 1); admDay = pickAdmDay(); renderAdmin(); });
   $("admNext").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() + 1); admDay = pickAdmDay(); renderAdmin(); });
-  $("tplAdd").addEventListener("click", async () => {
-    const v = $("tplNew").value.trim();
-    if (!v) return;
-    settings.templates.push(v);
-    $("tplNew").value = "";
-    await saveSettings(settings); renderTplList(); renderAdmin();
-  });
   $("photoFile").addEventListener("change", async (e) => {
     const f = e.target.files[0];
     e.target.value = "";
