@@ -358,8 +358,7 @@
         </div>
         <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
         <div id="admCal" class="cal-grid"></div>
-        <div id="admBatchMsg" style="font-size:13.5px; color:var(--accent-dark); margin-top:6px;"></div>
-        <div id="admBatchPanel" class="hidden" style="margin-top:10px;">
+        <div id="admBatchPanel" style="margin-top:10px;">
           <div id="admBatchCount" style="font-weight:800;">0日 選んでいます</div>
           <div class="grid2" style="margin-top:8px;">
             <button class="btn danger" id="admBatchStop">受け付けない</button>
@@ -368,7 +367,6 @@
           <p style="font-size:12.5px; color:var(--muted); margin-top:8px;">選んだ日をもう一度押すと、外れます。</p>
         </div>
         <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
-        <div id="admBlockRow"></div>
         <div id="admList"></div>
         <div id="admTourTitle" style="font-weight:800; margin-top:14px;"></div>
         <div id="admTourList"></div>
@@ -1065,25 +1063,6 @@ function dayStatus(bookings, key) {
   });
   return st;
 }
-// 選んでいる日の申込停止／再開を切り替える（見学は止まらない）
-async function toggleBookingBlockDay() {
-  const list = (settings.bookingBlockedDates || []).slice();
-  const i = list.indexOf(admDay);
-  if (i >= 0) list.splice(i, 1); else list.push(admDay);
-  settings.bookingBlockedDates = list;
-  try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
-  renderAdmin();
-  renderCalendar();
-}
-// 選んでいる日の見学停止／再開を切り替える（利用申込は止まらない）
-async function toggleTourBlockDay() {
-  const list = (settings.tourBlockedDates || []).slice();
-  const i = list.indexOf(admDay);
-  if (i >= 0) list.splice(i, 1); else list.push(admDay);
-  settings.tourBlockedDates = list;
-  try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
-  renderAdmin();
-}
 // 月を移動したときの選択日（今月なら今日、それ以外は1日）
 function pickAdmDay() {
   const now = new Date();
@@ -1158,17 +1137,6 @@ async function renderAdmin() {
   const dayBookings = bookings.filter((b) => b.date === admDay)
     .sort((a, b) => (a.startMin - b.startMin) || (a.status === b.status ? 0 : a.status === "tentative" ? -1 : 1));
   $("admDayTitle").textContent = fmtDateJP(admDay) + (isBook ? "の申込" : "の見学");
-  if (isBook) {
-    const blkNow = isBlocked(admDay);
-    $("admBlockRow").innerHTML = (blkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は申込を受け付けていません</div>' : "")
-      + '<button class="btn sub" id="admBookBlockBtn">' + (blkNow ? "申込の受付を再開する" : "この日は申込を受けない") + "</button>";
-    $("admBookBlockBtn").addEventListener("click", toggleBookingBlockDay);
-  } else {
-    const tBlkNow = isTourBlocked(admDay);
-    $("admBlockRow").innerHTML = (tBlkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は見学を受け付けていません</div>' : "")
-      + '<button class="btn sub" id="admTourBlockBtn">' + (tBlkNow ? "見学の受付を再開する" : "この日は見学を受けない") + "</button>";
-    $("admTourBlockBtn").addEventListener("click", toggleTourBlockDay);
-  }
   if (!dayBookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px;">この日の申込はありません</p>'; }
   else $("admList").innerHTML = dayBookings.map((b) => {
     const r = ROOMS[b.room];
@@ -1219,18 +1187,16 @@ async function renderAdmin() {
 function syncAdmVisibility() {
   const sel = batchSel.size > 0;
   const isBook = admTab === "book";
-  $("admBatchPanel").classList.toggle("hidden", !sel);
   $("admDayTitle").classList.toggle("hidden", sel);
-  $("admBlockRow").classList.toggle("hidden", sel);
   $("admList").classList.toggle("hidden", sel || !isBook);
   $("admTourTitle").classList.toggle("hidden", true);
   $("admTourList").classList.toggle("hidden", sel || isBook);
-  if (sel) $("admBatchCount").textContent = batchSel.size + "日 選んでいます";
+  // 2つのボタンが効く相手：日を選んでいればその日々、選んでいなければ今開いている日
+  $("admBatchCount").textContent = sel ? batchSel.size + "日 選んでいます" : fmtDateJP(admDay);
 }
-// 選んだ日に、止める／戻すをまとめて適用する
+// 「受け付けない／受け付ける」を、選んだ日々（なければ今開いている日）に適用する
 async function applyBatch(kind) {
-  if (!batchSel.size) return;
-  const keys = Array.from(batchSel);
+  const keys = batchSel.size ? Array.from(batchSel) : [admDay];
   const bl = (settings.bookingBlockedDates || []).slice();
   const tl = (settings.tourBlockedDates || []).slice();
   keys.forEach((k) => {
@@ -1245,11 +1211,9 @@ async function applyBatch(kind) {
   settings.bookingBlockedDates = bl;
   settings.tourBlockedDates = tl;
   try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
-  const n = keys.length;
   batchSel.clear();
   await renderAdmin();
   renderCalendar();
-  $("admBatchMsg").textContent = kind === "open" ? n + "日分を受け付けに戻しました。" : n + "日分を設定しました。";
 }
 async function tourAdminAction(act, no) {
   const v = await fetchViewing(no);
