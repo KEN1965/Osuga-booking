@@ -235,7 +235,7 @@
       </div>
       <label class="f">電話番号</label>
       <input type="tel" id="fPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
-      <label class="f">メールアドレス（任意）</label>
+      <label class="f">メールアドレス</label>
       <input type="email" id="fEmail" maxlength="80" autocomplete="email" placeholder="例：xxx@example.com">
       <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">確定するとメールが届きます。</p>
       <label class="f">集まりの名前（タイトル）</label>
@@ -281,7 +281,7 @@
         <input type="text" id="tName" maxlength="30" placeholder="例：山田 花子">
         <label class="f">電話番号</label>
         <input type="tel" id="tPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
-        <label class="f">メールアドレス（任意）</label>
+        <label class="f">メールアドレス</label>
         <input type="email" id="tEmail" maxlength="80" autocomplete="email" placeholder="例：xxx@example.com">
         <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">確定するとメールが届きます。</p>
         <label class="f">聞きたいこと（任意）</label>
@@ -784,8 +784,8 @@ async function submitBooking() {
         email = $("fEmail").value.trim();
   if (sel.start == null) { msg($("bookMsg"), "開始時刻を選んでください。"); return; }
   if (!title) { msg($("bookMsg"), "集まりの名前を書いてください。"); return; }
-  if (!org || !name || !phoneNorm(phone)) { msg($("bookMsg"), "団体名・代表者名・電話番号を書いてください。"); return; }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("bookMsg"), "メールアドレスを確認してください。"); return; }
+  if (!org || !name || !phoneNorm(phone) || !email) { msg($("bookMsg"), "団体名・代表者名・電話番号・メールアドレスを書いてください。"); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("bookMsg"), "メールアドレスを確認してください。"); return; }
   if (!editingNo && isBlocked(sel.date)) { msg($("bookMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
   // 送信直前に空きを再確認
   try { dayBookings = await fetchBookingsOnDate(sel.date); } catch (e) { /* そのまま進む */ }
@@ -889,8 +889,8 @@ async function submitTour() {
         email = $("tEmail").value.trim(), note = $("tNote").value.trim();
   if (!tourSel.date) { msg($("tourMsg"), "日にちを選んでください。"); return; }
   if (tourSel.start == null) { msg($("tourMsg"), "開始時刻を選んでください。"); return; }
-  if (!name || !phoneNorm(phone)) { msg($("tourMsg"), "お名前と電話番号を書いてください。"); return; }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("tourMsg"), "メールアドレスを確認してください。"); return; }
+  if (!name || !phoneNorm(phone) || !email) { msg($("tourMsg"), "お名前・電話番号・メールアドレスを書いてください。"); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("tourMsg"), "メールアドレスを確認してください。"); return; }
   if (isBlocked(tourSel.date)) { msg($("tourMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
   try {
     const no = await newViewingNo();
