@@ -369,6 +369,13 @@
         </div>
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
+        <label class="f">見学の受付時間（開始時刻）</label>
+        <div class="grid2">
+          <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSel"></select></div>
+          <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSel"></select></div>
+        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">見学の申し込みで選べるのは、この時間だけになります。</p>
+        <div id="tourTimeMsg"></div>
         <label class="f">返信の定型文</label>
         <div id="tplList"></div>
         <div class="grid2" style="margin-top:8px;">
@@ -434,7 +441,7 @@ const THEMES = {
   purple: { accent:"#8b5cc7", dark:"#6f43a8", soft:"#f1eafd", label:"紫" }
 };
 const DEFAULT_TEMPLATES = ["確定しました。", "受け付けました。", "時間の相談をさせてください。", "お電話いただけますか。"];
-const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [] };
+const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], tourStartMin: 540, tourEndMin: 1050 };
 
 /* ---------- 小物 ---------- */
 const $ = (id) => document.getElementById(id);
@@ -887,8 +894,10 @@ function renderTourSlots() {
   const now = new Date();
   const isToday = tourSel.date === dateKey(now);
   const nowMin = now.getHours() * 60 + now.getMinutes();
+  const tFrom = settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN;
+  const tTo = settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30;
   let html = "";
-  for (let t = OPEN_MIN; t < CLOSE_MIN; t += 30) {
+  for (let t = tFrom; t <= tTo; t += 30) {
     const dis = isToday && t <= nowMin;
     html += '<button class="slot' + (tourSel.start === t ? " sel" : "") + '" data-tt="' + t + '"' + (dis ? " disabled" : "") + '>'
       + '<div class="st">' + minToStr(t) + "</div>"
@@ -1199,6 +1208,29 @@ function renderTplList() {
       await saveSettings(settings); renderTplList(); renderAdmin();
     }));
 }
+// 見学の受付時間の設定（管理者）
+function renderTourTimeSetting() {
+  const sSel = $("tourStartSel"), eSel = $("tourEndSel");
+  if (!sSel || !eSel) return;
+  let opts = "";
+  for (let t = OPEN_MIN; t < CLOSE_MIN; t += 30) opts += '<option value="' + t + '">' + minToStr(t) + "</option>";
+  sSel.innerHTML = opts;
+  eSel.innerHTML = opts;
+  sSel.value = String(settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN);
+  eSel.value = String(settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30);
+  if (sSel.dataset.wired) return;
+  sSel.dataset.wired = "1";
+  const onChange = async () => {
+    let a = parseInt(sSel.value, 10), b = parseInt(eSel.value, 10);
+    if (b < a) { b = a; eSel.value = String(b); }
+    settings.tourStartMin = a;
+    settings.tourEndMin = b;
+    try { await saveSettings(settings); msg($("tourTimeMsg"), "見学の時間を変えました。", true); }
+    catch (e) { msg($("tourTimeMsg"), "保存できませんでした。"); }
+  };
+  sSel.addEventListener("change", onChange);
+  eSel.addEventListener("change", onChange);
+}
 function renderThemeRow() {
   $("themeRow").innerHTML = Object.keys(THEMES).map((k) =>
     '<button class="theme-dot' + (settings.theme === k ? " sel" : "") + '" data-theme="' + k + '" title="' + THEMES[k].label + '" style="background:' + THEMES[k].accent + ';" aria-label="' + THEMES[k].label + '"></button>').join("");
@@ -1245,7 +1277,7 @@ async function init() {
       adminAuthed = true;
       $("adminLogin").classList.add("hidden");
       $("adminMain").classList.remove("hidden");
-      renderAdmin(); renderTplList(); renderThemeRow(); renderPhotoSetting();
+      renderAdmin(); renderTplList(); renderThemeRow(); renderPhotoSetting(); renderTourTimeSetting();
       msg($("pinMsg"), "", true);
     } else {
       msg($("pinMsg"), "暗証番号が違います。");
