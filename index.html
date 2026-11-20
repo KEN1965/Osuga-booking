@@ -348,8 +348,8 @@
       <div class="card">
         <h2 class="view-title" id="admCardTitle">申込カレンダー</h2>
         <div class="grid2" style="margin-bottom:10px;">
-          <button class="btn" id="admTabBook">申込</button>
-          <button class="btn sub" id="admTabTour">見学</button>
+          <button class="btn" id="admTabBook" style="height:44px; padding:0 10px;">申込</button>
+          <button class="btn sub" id="admTabTour" style="height:44px; padding:0 10px;">見学</button>
         </div>
         <div style="display:flex; gap:7px; align-items:center;">
           <button class="backbtn" id="admPrev">‹</button>
@@ -358,10 +358,6 @@
         </div>
         <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
         <div id="admCal" class="cal-grid"></div>
-        <div class="legend" id="admLegendBook"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 申込を受け付けない日</span></div>
-        <div class="legend hidden" id="admLegendTour"><span><i class="dot v"></i>見学あり</span><span>✕ 見学を受け付けない日</span></div>
-        <div id="admTourOffNote" class="hidden" style="font-size:12.5px; color:var(--muted); margin-top:4px;">土日の✕は、設定の「土日は見学を受けない」によるものです。</div>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:6px;">何も入っていない日は、タップで選べます（連続で選べます）。</p>
         <div id="admBatchMsg" style="font-size:13.5px; color:var(--accent-dark); margin-top:6px;"></div>
         <div id="admBatchPanel" class="hidden" style="margin-top:10px;">
           <div id="admBatchCount" style="font-weight:800;">0日 選んでいます</div>
@@ -375,19 +371,13 @@
         <div id="admList"></div>
         <div id="admTourTitle" style="font-weight:800; margin-top:14px;"></div>
         <div id="admTourList"></div>
+        <div class="legend" id="admLegendBook" style="margin-top:12px;"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 申込を受け付けない日</span></div>
+        <div class="legend hidden" id="admLegendTour" style="margin-top:12px;"><span><i class="dot v"></i>見学あり</span><span>✕ 見学を受け付けない日</span></div>
+        <div id="admTourOffNote" class="hidden" style="font-size:12.5px; color:var(--muted); margin-top:4px;">土日の✕は、設定の「土日は見学を受けない」によるものです。</div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:6px;">何も入っていない日は、タップで選べます（連続で選べます）。</p>
       </div>
       <div class="card" style="margin-top:12px;">
         <h2 class="view-title">設定</h2>
-        <label class="f">テーマカラー（アプリ全体の色）</label>
-        <div class="theme-row" id="themeRow"></div>
-        <label class="f">最初の画面に出る写真</label>
-        <img id="admPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
-        <div class="grid2" style="margin-top:8px;">
-          <label class="btn sub photo-pick" for="photoFile">写真を選ぶ</label>
-          <button class="btn danger photo-pick hidden" id="photoDel">写真を消す</button>
-        </div>
-        <input type="file" id="photoFile" accept="image/*" class="hidden">
-        <div id="photoMsg"></div>
         <label class="f">見学の設定</label>
         <div style="font-size:13.5px; font-weight:700;">平日の時間</div>
         <div class="grid2">
@@ -402,6 +392,16 @@
         </div>
         <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">特定の日を見学なしにするのは、管理の「見学」カレンダーで日を選んで設定します。</p>
         <div id="tourTimeMsg"></div>
+        <label class="f">テーマカラー（アプリ全体の色）</label>
+        <div class="theme-row" id="themeRow"></div>
+        <label class="f">最初の画面に出る写真</label>
+        <img id="admPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
+        <div class="grid2" style="margin-top:8px;">
+          <label class="btn sub photo-pick" for="photoFile">写真を選ぶ</label>
+          <button class="btn danger photo-pick hidden" id="photoDel">写真を消す</button>
+        </div>
+        <input type="file" id="photoFile" accept="image/*" class="hidden">
+        <div id="photoMsg"></div>
         <label class="f">返信の定型文</label>
         <div id="tplList"></div>
         <div class="grid2" style="margin-top:8px;">
