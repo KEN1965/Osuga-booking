@@ -46,7 +46,7 @@
   .photo-area{margin-bottom:8px;}
   .photo-area img{display:block; width:100%; height:150px; object-fit:cover; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
   .adm-photo-prev{display:block; width:100%; border-radius:10px; margin:6px 0 2px;}
-  .photo-pick{display:flex; align-items:center; justify-content:center; height:48px; text-align:center; margin-top:0; padding:0 10px; cursor:pointer;}
+  .btn.photo-pick{display:flex; align-items:center; justify-content:center; height:48px; text-align:center; margin-top:0; padding:0 10px; cursor:pointer; line-height:1;}
   .howto{text-align:left; background:var(--accent-soft); border-radius:12px; padding:12px 14px; margin-top:14px;}
   .howto p{font-size:13.5px; margin-top:5px; line-height:1.55;}
   /* calendar */
@@ -361,10 +361,11 @@
         <div id="admBatchMsg" style="font-size:13.5px; color:var(--accent-dark); margin-top:6px;"></div>
         <div id="admBatchPanel" class="hidden" style="margin-top:10px;">
           <div id="admBatchCount" style="font-weight:800;">0日 選んでいます</div>
-          <button class="btn" id="admBatchStopBooking" style="margin-top:8px;">申込を受け付けない</button>
-          <button class="btn" id="admBatchStopTour" style="margin-top:8px;">見学を受け付けない</button>
-          <button class="btn sub" id="admBatchReopen" style="margin-top:8px;">受け付ける（元に戻す）</button>
-          <button class="btn sub" id="admBatchCancel" style="margin-top:8px;">やめる</button>
+          <div class="grid2" style="margin-top:8px;">
+            <button class="btn danger" id="admBatchStop">受け付けない</button>
+            <button class="btn" id="admBatchReopen">受け付ける</button>
+          </div>
+          <p style="font-size:12.5px; color:var(--muted); margin-top:8px;">選んだ日をもう一度押すと、外れます。</p>
         </div>
         <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
         <div id="admBlockRow"></div>
@@ -1224,8 +1225,6 @@ function syncAdmVisibility() {
   $("admList").classList.toggle("hidden", sel || !isBook);
   $("admTourTitle").classList.toggle("hidden", true);
   $("admTourList").classList.toggle("hidden", sel || isBook);
-  $("admBatchStopBooking").classList.toggle("hidden", !isBook);
-  $("admBatchStopTour").classList.toggle("hidden", isBook);
   if (sel) $("admBatchCount").textContent = batchSel.size + "日 選んでいます";
 }
 // 選んだ日に、止める／戻すをまとめて適用する
@@ -1430,9 +1429,7 @@ async function init() {
   });
   $("admTabBook").addEventListener("click", () => { if (admTab !== "book") { admTab = "book"; batchSel.clear(); renderAdmin(); } });
   $("admTabTour").addEventListener("click", () => { if (admTab !== "tour") { admTab = "tour"; batchSel.clear(); renderAdmin(); } });
-  $("admBatchCancel").addEventListener("click", () => { batchSel.clear(); renderAdmin(); });
-  $("admBatchStopBooking").addEventListener("click", () => applyBatch("booking"));
-  $("admBatchStopTour").addEventListener("click", () => applyBatch("tour"));
+  $("admBatchStop").addEventListener("click", () => applyBatch(admTab === "book" ? "booking" : "tour"));
   $("admBatchReopen").addEventListener("click", () => applyBatch("open"));
   $("admPrev").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() - 1); admDay = pickAdmDay(); renderAdmin(); });
   $("admNext").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() + 1); admDay = pickAdmDay(); renderAdmin(); });
