@@ -261,10 +261,11 @@
           <input type="text" id="fName" maxlength="30" autocomplete="name">
         </div>
         <div>
-          <label class="f">人数（任意）</label>
+          <label class="f">参加人数（任意）</label>
           <input type="tel" id="fPeople" maxlength="3" inputmode="numeric" placeholder="10">
         </div>
       </div>
+      <p id="peopleHint" style="font-size:12.5px; color:var(--muted); margin-top:2px;"></p>
       <label class="f">電話番号（必須）</label>
       <input type="tel" id="fPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
       <label class="f">メールアドレス（必須）</label>
@@ -440,7 +441,7 @@
           <div id="tourTimeMsg"></div>
         </div>
       </div>
-      <div class="card" style="margin-top:12px;">
+      <div class="card" style="margin-top:12px;" id="admSettingsCard">
         <h2 class="view-title">設定</h2>
         <label class="f">利用時間（集会所を使える時間）</label>
         <div class="grid2">
@@ -517,9 +518,9 @@ if (!DEMO && window.firebase) {
 /* ---------- 定数 ---------- */
 const MAP_URL = "https://www.google.com/maps/search/?api=1&query=34.3978464,132.4732989";
 const ROOMS = {
-  washitsu: { name: "和室",   price: 500,  cap: "約10人" },
-  hall:     { name: "ホール", price: 1000, cap: "約30人" },
-  both:     { name: "両方",   price: 1500, cap: "ホール＋和室" }
+  washitsu: { name: "和室",   price: 500,  cap: "約10人", capNum: 10, capText: "和室は約10人までです" },
+  hall:     { name: "ホール", price: 1000, cap: "約30人", capNum: 30, capText: "ホールは約30人までです" },
+  both:     { name: "両方",   price: 1500, cap: "ホール＋和室", capNum: 40, capText: "和室とホール、合わせて約40人までです" }
 };
 const OPEN_MIN = 9 * 60;    // 9:00
 const CLOSE_MIN = 18 * 60;  // 18:00
@@ -966,8 +967,13 @@ async function openBooking(date, editBk) {
   try { dayBookings = await fetchBookingsOnDate(date); } catch (e) { dayBookings = []; }
   if (editingNo) dayBookings = dayBookings.filter((b) => b.no !== editingNo);
   renderRooms(); renderSlots(); renderDurs(); renderPrice();
+  updatePeopleHint();
   msg($("bookMsg"), "", true);
   show("book");
+}
+function updatePeopleHint() {
+  const el = $("peopleHint");
+  if (el) el.textContent = ROOMS[sel.room].capText + "。";
 }
 function renderRooms() {
   $("roomRow").innerHTML = Object.keys(ROOMS).map((key) => {
@@ -978,7 +984,7 @@ function renderRooms() {
       + '<div class="rcap">' + r.cap + "</div></button>";
   }).join("");
   $("roomRow").querySelectorAll(".room").forEach((el) =>
-    el.addEventListener("click", () => { sel.room = el.getAttribute("data-room"); sel.start = null; renderRooms(); renderSlots(); renderDurs(); renderPrice(); }));
+    el.addEventListener("click", () => { sel.room = el.getAttribute("data-room"); sel.start = null; renderRooms(); renderSlots(); renderDurs(); renderPrice(); updatePeopleHint(); }));
 }
 function renderSlots() {
   let html = "";
@@ -1036,7 +1042,10 @@ async function submitBooking() {
         email = $("fEmail").value.trim();
   if (sel.start == null) { msg($("bookMsg"), "開始時刻を選んでください。"); return; }
   if (!title) { msg($("bookMsg"), "集まりの名前を書いてください。"); return; }
-  if (!org || !name || !phoneNorm(phone) || !email) { msg($("bookMsg"), "団体名・代表者名・電話番号・メールアドレスを書いてください。"); return; }
+  const nameVal = name || org;
+  if (!org || !nameVal || !phoneNorm(phone) || !email) { msg($("bookMsg"), "団体名・代表者名・電話番号・メールアドレスを書いてください。"); return; }
+  const peopleNum = parseInt(people, 10);
+  if (people && !isNaN(peopleNum) && peopleNum > ROOMS[sel.room].capNum) { msg($("bookMsg"), "参加人数が多すぎます。" + ROOMS[sel.room].capText + "。"); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("bookMsg"), "メールアドレスを確認してください。"); return; }
   if (!editingNo && isBlocked(sel.date)) { msg($("bookMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
   // 送信直前に空きを再確認
@@ -1051,7 +1060,7 @@ async function submitBooking() {
   const rec = {
     no: editingNo || (await newBookingNo()),
     date: sel.date, room: sel.room, startMin: sel.start, endMin: end,
-    title: title, org: org, name: name, phone: phone, people: people, purpose: purpose, note: note, email: email,
+    title: title, org: org, name: nameVal, phone: phone, people: people, purpose: purpose, note: note, email: email,
     status: bk ? bk.status : "tentative",
     reply: bk ? (bk.reply || "") : "", replyAt: bk ? (bk.replyAt || "") : "",
     createdAt: bk ? bk.createdAt : new Date().toISOString()
@@ -1279,6 +1288,7 @@ async function renderAdmin() {
   $("admLegendBook").classList.toggle("hidden", !isBook);
   $("admLegendTour").classList.toggle("hidden", isBook);
   $("admTourSetting").classList.toggle("hidden", isBook);
+  $("admSettingsCard").classList.toggle("hidden", !isBook);
   $("admTourOffNote").classList.toggle("hidden", isBook || !settings.tourWeekendOff);
   let bookings = [];
   try { bookings = await fetchBookingsInMonth(y + "-" + pad(m + 1)); } catch (e) { /* 空で出す */ }
@@ -1601,6 +1611,8 @@ async function init() {
   fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {});
   loadGuidePhotos();
   renderLastBar();
+  // 団体名に個人名が入ったら、代表者名にも同じ名前を入れる（空のときだけ）
+  $("fOrg").addEventListener("change", () => { if (!$("fName").value.trim()) $("fName").value = $("fOrg").value.trim(); });
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tab-lookup").addEventListener("click", () => { show("lookup"); refreshLookup(); });
   $("tab-admin").addEventListener("click", () => show("admin"));
