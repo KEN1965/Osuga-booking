@@ -49,7 +49,11 @@
   .access{margin-top:14px; border-top:1px solid var(--line); padding-top:12px; text-align:left;}
   .access p{font-size:14px; margin:4px 0;}
   .access a.btn{text-decoration:none;}
-  .guide-img{display:block; width:100%; border-radius:12px; margin-top:10px;}
+  .guide-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .guide-img{display:block; width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px;}
+  .guide-img.solo{grid-column:1 / -1; aspect-ratio:auto; object-fit:contain;}
+  .gslot-t{font-size:13px; font-weight:700; margin-bottom:4px;}
+  .grid2 .adm-photo-prev{aspect-ratio:4/3; object-fit:cover;}
   .btn.photo-pick{display:flex; align-items:center; justify-content:center; height:48px; text-align:center; margin-top:0; padding:0 10px; cursor:pointer; line-height:1;}
   .howto{text-align:left; background:var(--accent-soft); border-radius:12px; padding:12px 14px; margin-top:14px;}
   .howto p{font-size:13.5px; margin-top:5px; line-height:1.55;}
@@ -270,8 +274,12 @@
         <b>場所のご案内</b>
         <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
         <a class="btn sub" href="https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1" target="_blank" rel="noopener">地図を開く</a>
-        <img id="doneGuide1" class="guide-img hidden" alt="案内の写真">
-        <img id="doneGuide2" class="guide-img hidden" alt="案内の写真">
+        <div class="guide-grid hidden" id="doneGuides">
+          <img id="doneGuide1" class="guide-img hidden" alt="案内の写真">
+          <img id="doneGuide2" class="guide-img hidden" alt="案内の写真">
+          <img id="doneGuide3" class="guide-img hidden" alt="案内の写真">
+          <img id="doneGuide4" class="guide-img hidden" alt="案内の写真">
+        </div>
       </div>
       <div class="howto">
         <b>次からすぐ開けます</b>
@@ -326,8 +334,12 @@
         <b>場所のご案内</b>
         <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
         <a class="btn sub" href="https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1" target="_blank" rel="noopener">地図を開く</a>
-        <img id="tourGuide1" class="guide-img hidden" alt="案内の写真">
-        <img id="tourGuide2" class="guide-img hidden" alt="案内の写真">
+        <div class="guide-grid hidden" id="tourGuides">
+          <img id="tourGuide1" class="guide-img hidden" alt="案内の写真">
+          <img id="tourGuide2" class="guide-img hidden" alt="案内の写真">
+          <img id="tourGuide3" class="guide-img hidden" alt="案内の写真">
+          <img id="tourGuide4" class="guide-img hidden" alt="案内の写真">
+        </div>
       </div>
       <div class="howto">
         <b>次からすぐ開けます</b>
@@ -422,19 +434,39 @@
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
         <label class="f">案内の写真（申込・見学が終わった画面に出ます）</label>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、2枚まで。</p>
-        <img id="admGuidePrev1" class="adm-photo-prev hidden" alt="案内の写真1">
-        <div class="grid2" style="margin-top:8px;">
-          <label class="btn sub photo-pick" for="guideFile1">写真1を選ぶ</label>
-          <button class="btn danger photo-pick hidden" id="guideDel1">写真1を消す</button>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。</p>
+        <div class="grid2">
+          <div>
+            <div class="gslot-t">写真1</div>
+            <img id="admGuidePrev1" class="adm-photo-prev hidden" alt="案内の写真1">
+            <label class="btn sub photo-pick" for="guideFile1">選ぶ</label>
+            <button class="btn danger photo-pick hidden" id="guideDel1" style="margin-top:6px;">消す</button>
+          </div>
+          <div>
+            <div class="gslot-t">写真2</div>
+            <img id="admGuidePrev2" class="adm-photo-prev hidden" alt="案内の写真2">
+            <label class="btn sub photo-pick" for="guideFile2">選ぶ</label>
+            <button class="btn danger photo-pick hidden" id="guideDel2" style="margin-top:6px;">消す</button>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:10px;">
+          <div>
+            <div class="gslot-t">写真3</div>
+            <img id="admGuidePrev3" class="adm-photo-prev hidden" alt="案内の写真3">
+            <label class="btn sub photo-pick" for="guideFile3">選ぶ</label>
+            <button class="btn danger photo-pick hidden" id="guideDel3" style="margin-top:6px;">消す</button>
+          </div>
+          <div>
+            <div class="gslot-t">写真4</div>
+            <img id="admGuidePrev4" class="adm-photo-prev hidden" alt="案内の写真4">
+            <label class="btn sub photo-pick" for="guideFile4">選ぶ</label>
+            <button class="btn danger photo-pick hidden" id="guideDel4" style="margin-top:6px;">消す</button>
+          </div>
         </div>
         <input type="file" id="guideFile1" accept="image/*" class="hidden">
-        <img id="admGuidePrev2" class="adm-photo-prev hidden" alt="案内の写真2" style="margin-top:10px;">
-        <div class="grid2" style="margin-top:8px;">
-          <label class="btn sub photo-pick" for="guideFile2">写真2を選ぶ</label>
-          <button class="btn danger photo-pick hidden" id="guideDel2">写真2を消す</button>
-        </div>
         <input type="file" id="guideFile2" accept="image/*" class="hidden">
+        <input type="file" id="guideFile3" accept="image/*" class="hidden">
+        <input type="file" id="guideFile4" accept="image/*" class="hidden">
         <div id="guideMsg"></div>
         <label class="f">返信の定型文</label>
         <div id="tplList"></div>
@@ -668,9 +700,9 @@ async function deleteGuidePhoto(slot) {
   if (!db) throw new Error("no db");
   await db.collection("settings").doc("guide" + slot).delete();
 }
-let guideUrls = { 1: "", 2: "" };
+let guideUrls = { 1: "", 2: "", 3: "", 4: "" };
 function applyGuidePhotos() {
-  [1, 2].forEach((slot) => {
+  [1, 2, 3, 4].forEach((slot) => {
     const url = guideUrls[slot] || "";
     ["doneGuide", "tourGuide"].forEach((pre) => {
       const img = $(pre + slot);
@@ -679,15 +711,22 @@ function applyGuidePhotos() {
       else { img.removeAttribute("src"); img.classList.add("hidden"); }
     });
   });
+  ["doneGuides", "tourGuides"].forEach((cid) => {
+    const box = $(cid);
+    if (!box) return;
+    const vis = Array.from(box.querySelectorAll("img")).filter((i) => !i.classList.contains("hidden"));
+    box.classList.toggle("hidden", vis.length === 0);
+    vis.forEach((i) => i.classList.toggle("solo", vis.length === 1));
+  });
 }
 async function loadGuidePhotos() {
-  for (const slot of [1, 2]) {
+  for (const slot of [1, 2, 3, 4]) {
     try { guideUrls[slot] = await fetchGuidePhoto(slot); } catch (e) {}
   }
   applyGuidePhotos();
 }
 async function renderGuideSetting() {
-  for (const slot of [1, 2]) {
+  for (const slot of [1, 2, 3, 4]) {
     let url = "";
     try { url = await fetchGuidePhoto(slot); } catch (e) {}
     const prev = $("admGuidePrev" + slot), del = $("guideDel" + slot);
@@ -1516,7 +1555,7 @@ async function init() {
       msg($("photoMsg"), "写真を消せませんでした。");
     }
   });
-  [1, 2].forEach((slot) => {
+  [1, 2, 3, 4].forEach((slot) => {
     $("guideFile" + slot).addEventListener("change", async (e) => {
       const f = e.target.files[0];
       e.target.value = "";
