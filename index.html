@@ -1321,9 +1321,10 @@ async function renderAdmin() {
       + (b.note ? '<div class="detail-block">' + esc(b.note) + "</div>" : "")
       + (b.reply ? '<div class="reply-block">' + esc(b.reply) + "</div>" : "")
       + '<div class="bk-actions">'
-      + (b.status === "tentative" ? '<button class="primary" data-act="confirm" data-no="' + b.no + '">確定する</button>' : "")
+      + (b.status === "tentative" ? '<button class="primary" data-act="confirmMail" data-no="' + b.no + '">確定してメールで知らせる</button>' : "")
       + '<button data-act="reply" data-no="' + b.no + '">返信する</button>'
       + (b.email ? '<button data-act="mail" data-no="' + b.no + '">メールで知らせる</button>' : "")
+      + (b.status === "confirmed" ? '<button data-act="unconfirm" data-no="' + b.no + '">仮予約に戻す</button>' : "")
       + '<button class="warn" data-act="cancel" data-no="' + b.no + '">取り消す</button>'
       + "</div>"
       + '<div class="hidden" id="reply-' + b.no + '"><div class="tpl-chips">'
@@ -1346,8 +1347,9 @@ async function renderAdmin() {
       + '<div class="bk-meta">' + esc(v.name) + " 様／" + esc(v.phone) + (v.email ? "／" + esc(v.email) : "") + "／見学番号 " + v.no + "</div>"
       + (v.note ? '<div class="detail-block">' + esc(v.note) + "</div>" : "")
       + '<div class="bk-actions">'
-      + (v.status === "tentative" ? '<button class="primary" data-tact="confirm" data-no="' + v.no + '">確定する</button>' : "")
+      + (v.status === "tentative" ? '<button class="primary" data-tact="confirmMail" data-no="' + v.no + '">確定してメールで知らせる</button>' : "")
       + (v.email ? '<button data-tact="mail" data-no="' + v.no + '">メールで知らせる</button>' : "")
+      + (v.status === "confirmed" ? '<button data-tact="unconfirm" data-no="' + v.no + '">確認待ちに戻す</button>' : "")
       + '<button data-tact="tel" data-no="' + v.no + '">電話する</button>'
       + '<button class="warn" data-tact="cancel" data-no="' + v.no + '">取り消す</button>'
       + "</div></div>";
@@ -1412,6 +1414,13 @@ async function tourAdminAction(act, no) {
       + "&body=" + encodeURIComponent(lines.join("\n"));
     return;
   }
+  if (act === "confirmMail") {
+    v.status = "confirmed"; await saveViewing(v);
+    await renderAdmin();
+    if (v.email) tourAdminAction("mail", no);
+    return;
+  }
+  if (act === "unconfirm") { v.status = "tentative"; await saveViewing(v); renderAdmin(); return; }
   if (act === "confirm") { v.status = "confirmed"; await saveViewing(v); }
   if (act === "cancel") {
     if (!confirm("この見学を取り消しますか？")) return;
@@ -1450,6 +1459,13 @@ async function adminAction(act, no) {
       + "&body=" + encodeURIComponent(lines.join("\n"));
     return;
   }
+  if (act === "confirmMail") {
+    bk.status = "confirmed"; await saveBooking(bk);
+    await renderAdmin();
+    if (bk.email) adminAction("mail", no);
+    return;
+  }
+  if (act === "unconfirm") { bk.status = "tentative"; await saveBooking(bk); renderAdmin(); return; }
   if (act === "confirm") { bk.status = "confirmed"; await saveBooking(bk); }
   if (act === "cancel") {
     if (!confirm("この申込を取り消しますか？")) return;
