@@ -96,6 +96,7 @@
   .legend{display:flex; gap:16px; justify-content:center; margin-top:10px; font-size:12.5px; color:var(--muted);}
   .legend .dot{display:inline-block; vertical-align:-1px; margin-right:4px;}
   .cal-note{text-align:center; font-size:13px; color:var(--muted); margin-top:8px;}
+  .tour-link{background:none; border:none; color:var(--accent-dark); font-weight:800; font-size:14.5px; padding:6px 2px; white-space:nowrap; cursor:pointer; font-family:inherit;}
   /* booking */
   .backbtn{background:none; border:none; color:var(--accent-dark); font-weight:700; font-size:14.5px; cursor:pointer; padding:4px 0;}
   h2.view-title{font-size:18px; margin:4px 0 10px;}
@@ -222,7 +223,10 @@
         <span><span class="dot c"></span>確定あり</span>
         <span>✕ 受付停止</span>
       </div>
-      <div class="cal-note">日にちを押すと、その日の申し込みができます</div>
+      <div class="cal-note" style="display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left;">
+        <span>使いたい日にちを押してください</span>
+        <button class="tour-link" id="tourBtn2">見学はこちら ›</button>
+      </div>
     </div>
     <div class="card" style="margin-top:12px; text-align:center;">
       <div style="font-weight:800; font-size:16px;">見学もできます</div>
@@ -269,6 +273,7 @@
       <textarea id="fNote" rows="5" maxlength="300" placeholder="伝えておきたいことがあれば書いてください"></textarea>
       <div id="bookMsg"></div>
       <button class="btn" id="bookSubmit">この内容で申し込む</button>
+      <button class="btn sub" id="bookCancel">キャンセル</button>
     </div>
   </section>
 
@@ -1543,6 +1548,7 @@ async function init() {
   $("calPrev").addEventListener("click", () => { curMonth.setMonth(curMonth.getMonth() - 1); renderCalendar(); });
   $("calNext").addEventListener("click", () => { curMonth.setMonth(curMonth.getMonth() + 1); renderCalendar(); });
   $("bookBack").addEventListener("click", () => { editingNo = null; show("cal"); renderCalendar(); });
+  $("bookCancel").addEventListener("click", () => { editingNo = null; show("cal"); renderCalendar(); });
   $("bookSubmit").addEventListener("click", submitBooking);
   $("doneBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("lastOpen").addEventListener("click", () => {
@@ -1556,6 +1562,7 @@ async function init() {
     renderLastBar();
   });
   $("tourBtn").addEventListener("click", () => { show("tour"); renderTourCalendar(); });
+  $("tourBtn2").addEventListener("click", () => { show("tour"); renderTourCalendar(); });
   $("tourBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tourPrev").addEventListener("click", () => { tourMonth.setMonth(tourMonth.getMonth() - 1); renderTourCalendar(); });
   $("tourNext").addEventListener("click", () => { tourMonth.setMonth(tourMonth.getMonth() + 1); renderTourCalendar(); });
