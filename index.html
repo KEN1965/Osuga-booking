@@ -231,28 +231,28 @@
       <div class="durs" id="durRow"></div>
       <div class="price-box" id="priceBox"></div>
       <div class="step-label">4. 連絡先などを書いてください</div>
-      <label class="f">団体名（なければ個人名）</label>
+      <label class="f">団体名（必須・なければ個人名）</label>
       <input type="text" id="fOrg" maxlength="50" autocomplete="organization">
       <div class="grid2">
         <div>
-          <label class="f">代表者名</label>
+          <label class="f">代表者名（必須）</label>
           <input type="text" id="fName" maxlength="30" autocomplete="name">
         </div>
         <div>
-          <label class="f">人数</label>
+          <label class="f">人数（任意）</label>
           <input type="tel" id="fPeople" maxlength="3" inputmode="numeric" placeholder="10">
         </div>
       </div>
-      <label class="f">電話番号</label>
+      <label class="f">電話番号（必須）</label>
       <input type="tel" id="fPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
-      <label class="f">メールアドレス</label>
+      <label class="f">メールアドレス（必須）</label>
       <input type="email" id="fEmail" maxlength="80" autocomplete="email" placeholder="例：xxx@example.com">
       <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">確定するとメールが届きます。</p>
-      <label class="f">集まりの名前（タイトル）</label>
+      <label class="f">集まりの名前（必須）</label>
       <input type="text" id="fTitle" maxlength="50" placeholder="例：ひまわりコーラス練習、〇〇子ども会 など">
-      <label class="f">使用目的</label>
+      <label class="f">使用目的（任意）</label>
       <textarea id="fPurpose" rows="3" maxlength="100" placeholder="例：ヨガ教室、会議、子ども会の集まり など"></textarea>
-      <label class="f">備考</label>
+      <label class="f">備考（任意）</label>
       <textarea id="fNote" rows="5" maxlength="300" placeholder="伝えておきたいことがあれば書いてください"></textarea>
       <div id="bookMsg"></div>
       <button class="btn" id="bookSubmit">この内容で申し込む</button>
@@ -300,11 +300,11 @@
         <h3 id="tourDateTitle" style="margin-top:14px; font-size:16px;"></h3>
         <label class="f">開始時刻</label>
         <div class="slots" id="tourSlots"></div>
-        <label class="f">お名前</label>
+        <label class="f">お名前（必須）</label>
         <input type="text" id="tName" maxlength="30" placeholder="例：山田 花子">
-        <label class="f">電話番号</label>
+        <label class="f">電話番号（必須）</label>
         <input type="tel" id="tPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
-        <label class="f">メールアドレス</label>
+        <label class="f">メールアドレス（必須）</label>
         <input type="email" id="tEmail" maxlength="80" autocomplete="email" placeholder="例：xxx@example.com">
         <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">確定するとメールが届きます。</p>
         <label class="f">聞きたいこと（任意）</label>
