@@ -68,6 +68,10 @@
   .cal-cell.dim{opacity:.32; cursor:default;}
   .cal-cell.sel{box-shadow:inset 0 0 0 2.5px var(--accent);}
   .cal-cell.blocked{background:#e7e7e7;}
+  .cal-cell.tblocked .num, .cal-cell.tblocked .today-num{text-decoration:line-through;}
+  .cal-cell.bsel{background:#dbeafe; box-shadow:inset 0 0 0 2px var(--accent);}
+  .mini-mark{font-size:9.5px; font-weight:800; color:#dc2626; line-height:1;}
+  .mini-mark.v{color:#2563eb;}
   .cal-cell .blockx{font-size:11px; font-weight:700; color:#9ca3af; line-height:1;}
   .cal-cell .num{
     width:27px; height:27px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -342,7 +346,11 @@
     </div>
     <div id="adminMain" class="hidden">
       <div class="card">
-        <h2 class="view-title">申し込み一覧</h2>
+        <h2 class="view-title" id="admCardTitle">申込カレンダー</h2>
+        <div class="grid2" style="margin-bottom:10px;">
+          <button class="btn" id="admTabBook">申込</button>
+          <button class="btn sub" id="admTabTour">見学</button>
+        </div>
         <div style="display:flex; gap:7px; align-items:center;">
           <button class="backbtn" id="admPrev">‹</button>
           <div style="flex:1; text-align:center; font-weight:800;" id="admYM"></div>
@@ -350,7 +358,18 @@
         </div>
         <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
         <div id="admCal" class="cal-grid"></div>
-        <div class="legend"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span><i class="dot v"></i>見学あり</span><span>✕ 受付停止</span></div>
+        <div class="legend" id="admLegendBook"><span><i class="dot t"></i>仮予約あり</span><span><i class="dot c"></i>確定あり</span><span>✕ 申込を受け付けない日</span></div>
+        <div class="legend hidden" id="admLegendTour"><span><i class="dot v"></i>見学あり</span><span>✕ 見学を受け付けない日</span></div>
+        <div id="admTourOffNote" class="hidden" style="font-size:12.5px; color:var(--muted); margin-top:4px;">土日の✕は、設定の「土日は見学を受けない」によるものです。</div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:6px;">何も入っていない日は、タップで選べます（連続で選べます）。</p>
+        <div id="admBatchMsg" style="font-size:13.5px; color:var(--accent-dark); margin-top:6px;"></div>
+        <div id="admBatchPanel" class="hidden" style="margin-top:10px;">
+          <div id="admBatchCount" style="font-weight:800;">0日 選んでいます</div>
+          <button class="btn" id="admBatchStopBooking" style="margin-top:8px;">申込を受け付けない</button>
+          <button class="btn" id="admBatchStopTour" style="margin-top:8px;">見学を受け付けない</button>
+          <button class="btn sub" id="admBatchReopen" style="margin-top:8px;">受け付ける（元に戻す）</button>
+          <button class="btn sub" id="admBatchCancel" style="margin-top:8px;">やめる</button>
+        </div>
         <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
         <div id="admBlockRow"></div>
         <div id="admList"></div>
@@ -369,12 +388,19 @@
         </div>
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
-        <label class="f">見学の受付時間（開始時刻）</label>
+        <label class="f">見学の設定</label>
+        <div style="font-size:13.5px; font-weight:700;">平日の時間</div>
         <div class="grid2">
           <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSel"></select></div>
           <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSel"></select></div>
         </div>
-        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">見学の申し込みで選べるのは、この時間だけになります。</p>
+        <div style="font-size:13.5px; font-weight:700; margin-top:10px;">土日の時間</div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; margin-top:4px;"><input type="checkbox" id="tourWeekendOff" style="width:20px; height:20px; flex:none;">土日は見学を受けない</label>
+        <div class="grid2" id="tourWeRow">
+          <div><label class="f" style="margin-top:0;">何時から</label><select id="tourStartSelWE"></select></div>
+          <div><label class="f" style="margin-top:0;">何時まで</label><select id="tourEndSelWE"></select></div>
+        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">特定の日を見学なしにするのは、管理の「見学」カレンダーで日を選んで設定します。</p>
         <div id="tourTimeMsg"></div>
         <label class="f">返信の定型文</label>
         <div id="tplList"></div>
@@ -441,7 +467,7 @@ const THEMES = {
   purple: { accent:"#8b5cc7", dark:"#6f43a8", soft:"#f1eafd", label:"紫" }
 };
 const DEFAULT_TEMPLATES = ["確定しました。", "受け付けました。", "時間の相談をさせてください。", "お電話いただけますか。"];
-const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], tourStartMin: 540, tourEndMin: 1050 };
+const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false };
 
 /* ---------- 小物 ---------- */
 const $ = (id) => document.getElementById(id);
@@ -548,12 +574,22 @@ async function newViewingNo() {
   }
   return String(Date.now()).slice(-6);
 }
+// 旧形式の「両方停止（blockedDates）」を、申込停止・見学停止の両方のリストへ寄せる
+function mergeLegacyBlocked(st) {
+  const legacy = st.blockedDates || [];
+  if (legacy.length) {
+    st.bookingBlockedDates = Array.from(new Set([].concat(st.bookingBlockedDates || [], legacy)));
+    st.tourBlockedDates = Array.from(new Set([].concat(st.tourBlockedDates || [], legacy)));
+    st.blockedDates = [];
+  }
+  return st;
+}
 async function fetchSettings() {
-  if (DEMO) return Object.assign({}, DEFAULT_SETTINGS, lsRead(LS_ST, {}));
+  if (DEMO) return mergeLegacyBlocked(Object.assign({}, DEFAULT_SETTINGS, lsRead(LS_ST, {})));
   if (!db) return Object.assign({}, DEFAULT_SETTINGS);
   const doc = await withTimeout(db.collection("settings").doc("main").get(), 6000);
   if (!doc.exists) return Object.assign({}, DEFAULT_SETTINGS);
-  return Object.assign({}, DEFAULT_SETTINGS, doc.data());
+  return mergeLegacyBlocked(Object.assign({}, DEFAULT_SETTINGS, doc.data()));
 }
 async function saveSettings(st) {
   if (DEMO) { lsWrite(LS_ST, st); return; }
@@ -634,6 +670,8 @@ async function newBookingNo() {
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let curMonth = new Date(); curMonth.setDate(1);
 let admMonth = new Date(); admMonth.setDate(1);
+let admTab = "book";
+const batchSel = new Set();
 let admDay = dateKey(new Date()); // 管理者カレンダーで選んでいる日
 let sel = { date: null, room: "washitsu", start: null, hours: 1 };
 let dayBookings = [];
@@ -869,7 +907,7 @@ function renderTourCalendar() {
     const inMonth = d.getMonth() === m;
     const dow = d.getDay();
     const past = k < todayK;
-    const blk = inMonth && isBlocked(k);
+    const blk = inMonth && isTourDayOff(k);
     html += '<button class="cal-cell' + (dow === 0 ? " sun" : dow === 6 ? " sat" : "")
       + (inMonth ? "" : " dim") + (past && inMonth ? " past" : "") + (blk ? " blocked" : "")
       + (tourSel.date === k ? " sel" : "") + '" data-tdate="' + k + '"' + (inMonth && !past && !blk ? "" : " disabled") + '>'
@@ -894,8 +932,10 @@ function renderTourSlots() {
   const now = new Date();
   const isToday = tourSel.date === dateKey(now);
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const tFrom = settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN;
-  const tTo = settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30;
+  const dowT = new Date(tourSel.date + "T00:00:00").getDay();
+  const isWE = dowT === 0 || dowT === 6;
+  const tFrom = isWE ? (settings.tourStartMinWE != null ? settings.tourStartMinWE : OPEN_MIN) : (settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN);
+  const tTo = isWE ? (settings.tourEndMinWE != null ? settings.tourEndMinWE : CLOSE_MIN - 30) : (settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30);
   let html = "";
   for (let t = tFrom; t <= tTo; t += 30) {
     const dis = isToday && t <= nowMin;
@@ -914,7 +954,7 @@ async function submitTour() {
   if (tourSel.start == null) { msg($("tourMsg"), "開始時刻を選んでください。"); return; }
   if (!name || !phoneNorm(phone) || !email) { msg($("tourMsg"), "お名前・電話番号・メールアドレスを書いてください。"); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("tourMsg"), "メールアドレスを確認してください。"); return; }
-  if (isBlocked(tourSel.date)) { msg($("tourMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
+  if (isTourDayOff(tourSel.date)) { msg($("tourMsg"), "この日は見学を受け付けていません。別の日を選んでください。"); return; }
   try {
     const no = await newViewingNo();
     await saveViewing({
@@ -1001,8 +1041,19 @@ async function refreshLookup() {
 }
 
 /* ---------- 管理者 ---------- */
-// その日が受付停止かどうか
-function isBlocked(key) { return (settings.blockedDates || []).indexOf(key) >= 0; }
+// その日が申込の受付停止かどうか
+function isBlocked(key) { return (settings.bookingBlockedDates || []).indexOf(key) >= 0; }
+// その日が見学の受付停止かどうか
+function isTourBlocked(key) { return (settings.tourBlockedDates || []).indexOf(key) >= 0; }
+// その日に見学を受け付けないかどうか（見学停止・申込と両方停止・土日休み）
+function isTourDayOff(key) {
+  if (isTourBlocked(key)) return true;
+  if (settings.tourWeekendOff) {
+    const d = new Date(key + "T00:00:00").getDay();
+    if (d === 0 || d === 6) return true;
+  }
+  return false;
+}
 // その日に仮予約・確定があるか（カレンダーのドット用）
 function dayStatus(bookings, key) {
   const st = { t: false, c: false };
@@ -1013,15 +1064,24 @@ function dayStatus(bookings, key) {
   });
   return st;
 }
-// 選んでいる日の受付停止／再開を切り替える
-async function toggleBlockDay() {
-  const list = (settings.blockedDates || []).slice();
+// 選んでいる日の申込停止／再開を切り替える（見学は止まらない）
+async function toggleBookingBlockDay() {
+  const list = (settings.bookingBlockedDates || []).slice();
   const i = list.indexOf(admDay);
   if (i >= 0) list.splice(i, 1); else list.push(admDay);
-  settings.blockedDates = list;
+  settings.bookingBlockedDates = list;
   try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
   renderAdmin();
   renderCalendar();
+}
+// 選んでいる日の見学停止／再開を切り替える（利用申込は止まらない）
+async function toggleTourBlockDay() {
+  const list = (settings.tourBlockedDates || []).slice();
+  const i = list.indexOf(admDay);
+  if (i >= 0) list.splice(i, 1); else list.push(admDay);
+  settings.tourBlockedDates = list;
+  try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
+  renderAdmin();
 }
 // 月を移動したときの選択日（今月なら今日、それ以外は1日）
 function pickAdmDay() {
@@ -1032,6 +1092,13 @@ function pickAdmDay() {
 async function renderAdmin() {
   const y = admMonth.getFullYear(), m = admMonth.getMonth();
   $("admYM").textContent = y + "年 " + (m + 1) + "月";
+  const isBook = admTab === "book";
+  $("admCardTitle").textContent = isBook ? "申込カレンダー" : "見学カレンダー";
+  $("admTabBook").className = "btn" + (isBook ? "" : " sub");
+  $("admTabTour").className = "btn" + (isBook ? " sub" : "");
+  $("admLegendBook").classList.toggle("hidden", !isBook);
+  $("admLegendTour").classList.toggle("hidden", isBook);
+  $("admTourOffNote").classList.toggle("hidden", isBook || !settings.tourWeekendOff);
   let bookings = [];
   try { bookings = await fetchBookingsInMonth(y + "-" + pad(m + 1)); } catch (e) { /* 空で出す */ }
   bookings = bookings.filter((b) => b.status !== "cancelled");
@@ -1053,35 +1120,54 @@ async function renderAdmin() {
     else dObj = new Date(y, m, dnum);
     const key = dateKey(dObj);
     const st = other ? { t: false, c: false } : dayStatus(bookings, key);
-    const blk = !other && isBlocked(key);
+    // 申込カレンダーは申込だけ、見学カレンダーは見学だけを出す
+    const blk = isBook ? (!other && isBlocked(key)) : (!other && isTourDayOff(key));
     let dots = "";
     if (blk) dots = '<span class="blockx">✕</span>';
-    else {
+    else if (isBook) {
       if (st.t) dots += '<i class="dot t"></i>';
       if (st.c) dots += '<i class="dot c"></i>';
-      if (viewings.some((v) => v.date === key)) dots += '<i class="dot v"></i>';
+    } else {
+      if (!other && viewings.some((v) => v.date === key)) dots += '<i class="dot v"></i>';
     }
     const dow = dObj.getDay();
-    cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
+    cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (batchSel.has(key) ? " bsel" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
       + '<span class="' + (key === todayKey && !other ? "today-num" : "num") + '">' + dObj.getDate() + "</span>"
       + '<span class="dots">' + dots + "</span></button>";
   }
   $("admCal").innerHTML = cells;
   $("admCal").querySelectorAll("button[data-admday]").forEach((el) =>
     el.addEventListener("click", () => {
-      admDay = el.getAttribute("data-admday");
-      const d = new Date(admDay + "T00:00:00");
+      const k = el.getAttribute("data-admday");
+      const d = new Date(k + "T00:00:00");
+      const inMonth = d.getMonth() === admMonth.getMonth() && d.getFullYear() === admMonth.getFullYear();
+      const hasBk = isBook ? bookings.some((b) => b.date === k) : viewings.some((v) => v.date === k);
+      // このカレンダーで何も入っていない日は、タップで「選ぶ」（連続で選べる）
+      if (inMonth && !hasBk) {
+        if (batchSel.has(k)) batchSel.delete(k); else batchSel.add(k);
+        renderAdmin();
+        return;
+      }
+      batchSel.clear();
+      admDay = k;
       admMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       renderAdmin();
     }));
   // 選んだ日の申込だけをカードで出す
   const dayBookings = bookings.filter((b) => b.date === admDay)
     .sort((a, b) => (a.startMin - b.startMin) || (a.status === b.status ? 0 : a.status === "tentative" ? -1 : 1));
-  $("admDayTitle").textContent = fmtDateJP(admDay) + "の申込";
-  const blkNow = isBlocked(admDay);
-  $("admBlockRow").innerHTML = (blkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は受付を停止しています</div>' : "")
-    + '<button class="btn sub" id="admBlockBtn">' + (blkNow ? "受け付けを再開する" : "この日は受け付けない") + "</button>";
-  $("admBlockBtn").addEventListener("click", toggleBlockDay);
+  $("admDayTitle").textContent = fmtDateJP(admDay) + (isBook ? "の申込" : "の見学");
+  if (isBook) {
+    const blkNow = isBlocked(admDay);
+    $("admBlockRow").innerHTML = (blkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は申込を受け付けていません</div>' : "")
+      + '<button class="btn sub" id="admBookBlockBtn">' + (blkNow ? "申込の受付を再開する" : "この日は申込を受けない") + "</button>";
+    $("admBookBlockBtn").addEventListener("click", toggleBookingBlockDay);
+  } else {
+    const tBlkNow = isTourBlocked(admDay);
+    $("admBlockRow").innerHTML = (tBlkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は見学を受け付けていません</div>' : "")
+      + '<button class="btn sub" id="admTourBlockBtn">' + (tBlkNow ? "見学の受付を再開する" : "この日は見学を受けない") + "</button>";
+    $("admTourBlockBtn").addEventListener("click", toggleTourBlockDay);
+  }
   if (!dayBookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px;">この日の申込はありません</p>'; }
   else $("admList").innerHTML = dayBookings.map((b) => {
     const r = ROOMS[b.room];
@@ -1111,7 +1197,7 @@ async function renderAdmin() {
   // その日の見学
   const dayTours = viewings.filter((v) => v.date === admDay)
     .sort((a, b) => a.startMin - b.startMin);
-  $("admTourTitle").textContent = dayTours.length ? fmtDateJP(admDay) + "の見学" : "";
+  $("admTourTitle").textContent = "";
   $("admTourList").innerHTML = dayTours.map((v) => {
     return '<div class="bk"><div class="bk-head"><div class="bk-when">' + minToStr(v.startMin) + "〜　見学</div>"
       + (v.status === "confirmed" ? '<span class="status-pill c">見学確定</span>' : '<span class="status-pill t">見学（確認待ち）</span>') + "</div>"
@@ -1126,6 +1212,45 @@ async function renderAdmin() {
   }).join("");
   $("admTourList").querySelectorAll("button[data-tact]").forEach((el) =>
     el.addEventListener("click", () => tourAdminAction(el.getAttribute("data-tact"), el.getAttribute("data-no"))));
+  syncAdmVisibility();
+}
+// タブと「日を選んでいる間」の表示切り替え
+function syncAdmVisibility() {
+  const sel = batchSel.size > 0;
+  const isBook = admTab === "book";
+  $("admBatchPanel").classList.toggle("hidden", !sel);
+  $("admDayTitle").classList.toggle("hidden", sel);
+  $("admBlockRow").classList.toggle("hidden", sel);
+  $("admList").classList.toggle("hidden", sel || !isBook);
+  $("admTourTitle").classList.toggle("hidden", true);
+  $("admTourList").classList.toggle("hidden", sel || isBook);
+  $("admBatchStopBooking").classList.toggle("hidden", !isBook);
+  $("admBatchStopTour").classList.toggle("hidden", isBook);
+  if (sel) $("admBatchCount").textContent = batchSel.size + "日 選んでいます";
+}
+// 選んだ日に、止める／戻すをまとめて適用する
+async function applyBatch(kind) {
+  if (!batchSel.size) return;
+  const keys = Array.from(batchSel);
+  const bl = (settings.bookingBlockedDates || []).slice();
+  const tl = (settings.tourBlockedDates || []).slice();
+  keys.forEach((k) => {
+    if (kind === "booking" && bl.indexOf(k) < 0) bl.push(k);
+    if (kind === "tour" && tl.indexOf(k) < 0) tl.push(k);
+    if (kind === "open") {
+      // 「受け付ける」は、今見ているカレンダーの分だけ戻す
+      if (admTab === "book") { const i = bl.indexOf(k); if (i >= 0) bl.splice(i, 1); }
+      else { const j = tl.indexOf(k); if (j >= 0) tl.splice(j, 1); }
+    }
+  });
+  settings.bookingBlockedDates = bl;
+  settings.tourBlockedDates = tl;
+  try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
+  const n = keys.length;
+  batchSel.clear();
+  await renderAdmin();
+  renderCalendar();
+  $("admBatchMsg").textContent = kind === "open" ? n + "日分を受け付けに戻しました。" : n + "日分を設定しました。";
 }
 async function tourAdminAction(act, no) {
   const v = await fetchViewing(no);
@@ -1208,28 +1333,48 @@ function renderTplList() {
       await saveSettings(settings); renderTplList(); renderAdmin();
     }));
 }
-// 見学の受付時間の設定（管理者）
+// 見学の設定（管理者）：平日・土日の時間と、土日休み
 function renderTourTimeSetting() {
   const sSel = $("tourStartSel"), eSel = $("tourEndSel");
-  if (!sSel || !eSel) return;
+  const sSelW = $("tourStartSelWE"), eSelW = $("tourEndSelWE"), offBox = $("tourWeekendOff");
+  if (!sSel || !eSel || !sSelW || !eSelW || !offBox) return;
   let opts = "";
   for (let t = OPEN_MIN; t < CLOSE_MIN; t += 30) opts += '<option value="' + t + '">' + minToStr(t) + "</option>";
-  sSel.innerHTML = opts;
-  eSel.innerHTML = opts;
+  sSel.innerHTML = opts; eSel.innerHTML = opts; sSelW.innerHTML = opts; eSelW.innerHTML = opts;
   sSel.value = String(settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN);
   eSel.value = String(settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30);
+  sSelW.value = String(settings.tourStartMinWE != null ? settings.tourStartMinWE : OPEN_MIN);
+  eSelW.value = String(settings.tourEndMinWE != null ? settings.tourEndMinWE : CLOSE_MIN - 30);
+  offBox.checked = !!settings.tourWeekendOff;
+  $("tourWeRow").classList.toggle("hidden", offBox.checked);
   if (sSel.dataset.wired) return;
   sSel.dataset.wired = "1";
-  const onChange = async () => {
-    let a = parseInt(sSel.value, 10), b = parseInt(eSel.value, 10);
-    if (b < a) { b = a; eSel.value = String(b); }
-    settings.tourStartMin = a;
-    settings.tourEndMin = b;
-    try { await saveSettings(settings); msg($("tourTimeMsg"), "見学の時間を変えました。", true); }
+  const save = async () => {
+    try { await saveSettings(settings); msg($("tourTimeMsg"), "見学の設定を変えました。", true); }
     catch (e) { msg($("tourTimeMsg"), "保存できませんでした。"); }
   };
-  sSel.addEventListener("change", onChange);
-  eSel.addEventListener("change", onChange);
+  const onWeekday = () => {
+    let a = parseInt(sSel.value, 10), b = parseInt(eSel.value, 10);
+    if (b < a) { b = a; eSel.value = String(b); }
+    settings.tourStartMin = a; settings.tourEndMin = b;
+    save();
+  };
+  const onWeekend = () => {
+    let a = parseInt(sSelW.value, 10), b = parseInt(eSelW.value, 10);
+    if (b < a) { b = a; eSelW.value = String(b); }
+    settings.tourStartMinWE = a; settings.tourEndMinWE = b;
+    save();
+  };
+  const onOff = () => {
+    settings.tourWeekendOff = offBox.checked;
+    $("tourWeRow").classList.toggle("hidden", offBox.checked);
+    save();
+  };
+  sSel.addEventListener("change", onWeekday);
+  eSel.addEventListener("change", onWeekday);
+  sSelW.addEventListener("change", onWeekend);
+  eSelW.addEventListener("change", onWeekend);
+  offBox.addEventListener("change", onOff);
 }
 function renderThemeRow() {
   $("themeRow").innerHTML = Object.keys(THEMES).map((k) =>
@@ -1283,6 +1428,12 @@ async function init() {
       msg($("pinMsg"), "暗証番号が違います。");
     }
   });
+  $("admTabBook").addEventListener("click", () => { if (admTab !== "book") { admTab = "book"; batchSel.clear(); renderAdmin(); } });
+  $("admTabTour").addEventListener("click", () => { if (admTab !== "tour") { admTab = "tour"; batchSel.clear(); renderAdmin(); } });
+  $("admBatchCancel").addEventListener("click", () => { batchSel.clear(); renderAdmin(); });
+  $("admBatchStopBooking").addEventListener("click", () => applyBatch("booking"));
+  $("admBatchStopTour").addEventListener("click", () => applyBatch("tour"));
+  $("admBatchReopen").addEventListener("click", () => applyBatch("open"));
   $("admPrev").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() - 1); admDay = pickAdmDay(); renderAdmin(); });
   $("admNext").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() + 1); admDay = pickAdmDay(); renderAdmin(); });
   $("tplAdd").addEventListener("click", async () => {
