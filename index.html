@@ -302,8 +302,8 @@
         </div>
       </div>
       <div class="howto">
-        <b>次からすぐ開けます</b>
-        <p>スマホの画面にアイコンを残すと、次から押すだけで開けます。確認・修正のときに便利です。</p>
+        <b>スマホの画面にアイコンを置けます</b>
+        <p>下の操作をすると、スマホの画面にこのページのアイコンが置けます。次からは、そのアイコンを押すだけで開けます。確認・修正のときに便利です。</p>
         <p class="howto-ios">iPhoneの場合：下の共有ボタン（四角に上向きの矢印）を押して、「ホーム画面に追加」を押してください。出てこないときは「表示を増やす」を押すと出てきます。</p>
         <p class="howto-android">Androidの場合：右上の「︙」を押して、「ホーム画面に追加」を押してください。</p>
       </div>
@@ -351,7 +351,7 @@
       <h2 class="view-title">見学の申し込みを受け付けました</h2>
       <p style="margin:6px 0;">あなたの見学番号</p>
       <div class="big-no" id="tourDoneNo"></div>
-      <p style="font-size:14px; color:var(--muted);">管理運営委員会から、メールか電話で連絡します。<br>変更や取り消しはお電話ください。</p>
+      <p style="font-size:14px; color:var(--muted);">管理運営委員会から、メールでご連絡します。<br>変更や取り消しはお電話ください。</p>
       <div class="access">
         <b>場所のご案内</b>
         <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
@@ -366,8 +366,8 @@
         </div>
       </div>
       <div class="howto">
-        <b>次からすぐ開けます</b>
-        <p>スマホの画面にアイコンを残すと、次から押すだけで開けます。</p>
+        <b>スマホの画面にアイコンを置けます</b>
+        <p>下の操作をすると、スマホの画面にこのページのアイコンが置けます。次からは、そのアイコンを押すだけで開けます。</p>
         <p class="howto-ios">iPhoneの場合：下の共有ボタン（四角に上向きの矢印）を押して、「ホーム画面に追加」を押してください。出てこないときは「表示を増やす」を押すと出てきます。</p>
         <p class="howto-android">Androidの場合：右上の「︙」を押して、「ホーム画面に追加」を押してください。</p>
       </div>
@@ -1521,10 +1521,6 @@ function renderThemeRow() {
 /* ---------- 初期化 ---------- */
 async function init() {
   if (DEMO) $("demoBanner").classList.remove("hidden");
-  // ホーム画面に追加の説明は、使っている端末の分だけ出す
-  const ua = navigator.userAgent;
-  if (/iPhone|iPad|iPod/.test(ua)) document.querySelectorAll(".howto-android").forEach((e) => e.classList.add("hidden"));
-  else if (/Android/.test(ua)) document.querySelectorAll(".howto-ios").forEach((e) => e.classList.add("hidden"));
   settings = Object.assign({}, DEFAULT_SETTINGS);
   applyTheme(settings.theme);
   renderDow();
