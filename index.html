@@ -46,6 +46,10 @@
   .photo-area{margin-bottom:8px;}
   .photo-area img{display:block; width:100%; height:150px; object-fit:cover; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
   .adm-photo-prev{display:block; width:100%; border-radius:10px; margin:6px 0 2px;}
+  .access{margin-top:14px; border-top:1px solid var(--line); padding-top:12px; text-align:left;}
+  .access p{font-size:14px; margin:4px 0;}
+  .access a.btn{text-decoration:none;}
+  .guide-img{display:block; width:100%; border-radius:12px; margin-top:10px;}
   .btn.photo-pick{display:flex; align-items:center; justify-content:center; height:48px; text-align:center; margin-top:0; padding:0 10px; cursor:pointer; line-height:1;}
   .howto{text-align:left; background:var(--accent-soft); border-radius:12px; padding:12px 14px; margin-top:14px;}
   .howto p{font-size:13.5px; margin-top:5px; line-height:1.55;}
@@ -262,6 +266,13 @@
       <p style="margin:6px 0;">あなたの申込番号</p>
       <div class="big-no" id="doneNo"></div>
       <p style="font-size:14px; color:var(--muted);">この番号と電話番号で、あとから確認・修正ができます。<br>管理運営委員会が確認すると「確定」になります。</p>
+      <div class="access">
+        <b>場所のご案内</b>
+        <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
+        <a class="btn sub" href="https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1" target="_blank" rel="noopener">地図を開く</a>
+        <img id="doneGuide1" class="guide-img hidden" alt="案内の写真">
+        <img id="doneGuide2" class="guide-img hidden" alt="案内の写真">
+      </div>
       <div class="howto">
         <b>次からすぐ開けます</b>
         <p>スマホの画面にアイコンを残すと、次から押すだけで開けます。確認・修正のときに便利です。</p>
@@ -311,6 +322,13 @@
       <p style="margin:6px 0;">あなたの見学番号</p>
       <div class="big-no" id="tourDoneNo"></div>
       <p style="font-size:14px; color:var(--muted);">管理運営委員会から、メールか電話で連絡します。<br>変更や取り消しはお電話ください。</p>
+      <div class="access">
+        <b>場所のご案内</b>
+        <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
+        <a class="btn sub" href="https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1" target="_blank" rel="noopener">地図を開く</a>
+        <img id="tourGuide1" class="guide-img hidden" alt="案内の写真">
+        <img id="tourGuide2" class="guide-img hidden" alt="案内の写真">
+      </div>
       <div class="howto">
         <b>次からすぐ開けます</b>
         <p>スマホの画面にアイコンを残すと、次から押すだけで開けます。</p>
@@ -401,6 +419,21 @@
         </div>
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
+        <label class="f">案内の写真（申込・見学が終わった画面に出ます）</label>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、2枚まで。</p>
+        <img id="admGuidePrev1" class="adm-photo-prev hidden" alt="案内の写真1">
+        <div class="grid2" style="margin-top:8px;">
+          <label class="btn sub photo-pick" for="guideFile1">写真1を選ぶ</label>
+          <button class="btn danger photo-pick hidden" id="guideDel1">写真1を消す</button>
+        </div>
+        <input type="file" id="guideFile1" accept="image/*" class="hidden">
+        <img id="admGuidePrev2" class="adm-photo-prev hidden" alt="案内の写真2" style="margin-top:10px;">
+        <div class="grid2" style="margin-top:8px;">
+          <label class="btn sub photo-pick" for="guideFile2">写真2を選ぶ</label>
+          <button class="btn danger photo-pick hidden" id="guideDel2">写真2を消す</button>
+        </div>
+        <input type="file" id="guideFile2" accept="image/*" class="hidden">
+        <div id="guideMsg"></div>
         <label class="f">返信の定型文</label>
         <div id="tplList"></div>
         <div class="grid2" style="margin-top:8px;">
@@ -450,6 +483,7 @@ if (!DEMO && window.firebase) {
 }
 
 /* ---------- 定数 ---------- */
+const MAP_URL = "https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1";
 const ROOMS = {
   washitsu: { name: "和室",   price: 500,  cap: "約10人" },
   hall:     { name: "ホール", price: 1000, cap: "約30人" },
@@ -613,6 +647,51 @@ async function deletePhoto() {
   if (DEMO) { localStorage.removeItem(LS_PH); return; }
   if (!db) throw new Error("no db");
   await db.collection("settings").doc("photo").delete();
+}
+
+/* ---------- 案内の写真（完了画面に出す、2枚まで） ---------- */
+async function fetchGuidePhoto(slot) {
+  if (DEMO) return lsRead("oosuga_guide" + slot + "_v1", "");
+  if (!db) return "";
+  const doc = await withTimeout(db.collection("settings").doc("guide" + slot).get(), 6000);
+  return doc.exists ? (doc.data().data || "") : "";
+}
+async function saveGuidePhoto(slot, dataUrl) {
+  if (DEMO) { lsWrite("oosuga_guide" + slot + "_v1", dataUrl); return; }
+  if (!db) throw new Error("no db");
+  await db.collection("settings").doc("guide" + slot).set({ data: dataUrl });
+}
+async function deleteGuidePhoto(slot) {
+  if (DEMO) { localStorage.removeItem("oosuga_guide" + slot + "_v1"); return; }
+  if (!db) throw new Error("no db");
+  await db.collection("settings").doc("guide" + slot).delete();
+}
+let guideUrls = { 1: "", 2: "" };
+function applyGuidePhotos() {
+  [1, 2].forEach((slot) => {
+    const url = guideUrls[slot] || "";
+    ["doneGuide", "tourGuide"].forEach((pre) => {
+      const img = $(pre + slot);
+      if (!img) return;
+      if (url) { img.src = url; img.classList.remove("hidden"); }
+      else { img.removeAttribute("src"); img.classList.add("hidden"); }
+    });
+  });
+}
+async function loadGuidePhotos() {
+  for (const slot of [1, 2]) {
+    try { guideUrls[slot] = await fetchGuidePhoto(slot); } catch (e) {}
+  }
+  applyGuidePhotos();
+}
+async function renderGuideSetting() {
+  for (const slot of [1, 2]) {
+    let url = "";
+    try { url = await fetchGuidePhoto(slot); } catch (e) {}
+    const prev = $("admGuidePrev" + slot), del = $("guideDel" + slot);
+    if (url) { prev.src = url; prev.classList.remove("hidden"); del.classList.remove("hidden"); }
+    else { prev.classList.add("hidden"); del.classList.add("hidden"); }
+  }
 }
 function applyPhoto(url) {
   photoUrl = url || "";
@@ -1228,6 +1307,8 @@ async function tourAdminAction(act, no) {
       "見学の申し込みを受け付けました。",
       fmtDateJP(v.date) + " " + minToStr(v.startMin) + "にお待ちしています。",
       "",
+      "場所：広島市南区大須賀町9-1（広島駅から徒歩2分）",
+      "地図：" + MAP_URL,
       "お問い合わせ：090-9500-6371",
       "",
       "駅前集会所（大須賀集会所）管理運営委員会"
@@ -1264,6 +1345,9 @@ async function adminAction(act, no) {
       "部屋：" + r.name,
       "料金：" + fee + "円",
       "申込番号：" + bk.no,
+      "",
+      "場所：広島市南区大須賀町9-1（広島駅から徒歩2分）",
+      "地図：" + MAP_URL,
       "",
       "駅前集会所（大須賀集会所）管理運営委員会"
     ];
@@ -1365,6 +1449,7 @@ async function init() {
   // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
   fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); }).catch(() => {});
   fetchPhoto().then(applyPhoto).catch(() => {});
+  loadGuidePhotos();
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tab-lookup").addEventListener("click", () => { show("lookup"); refreshLookup(); });
   $("tab-admin").addEventListener("click", () => show("admin"));
@@ -1385,7 +1470,7 @@ async function init() {
       adminAuthed = true;
       $("adminLogin").classList.add("hidden");
       $("adminMain").classList.remove("hidden");
-      renderAdmin(); renderTplList(); renderThemeRow(); renderPhotoSetting(); renderTourTimeSetting();
+      renderAdmin(); renderTplList(); renderThemeRow(); renderPhotoSetting(); renderGuideSetting(); renderTourTimeSetting();
       msg($("pinMsg"), "", true);
     } else {
       msg($("pinMsg"), "暗証番号が違います。");
@@ -1427,6 +1512,34 @@ async function init() {
     } catch (err) {
       msg($("photoMsg"), "写真を消せませんでした。");
     }
+  });
+  [1, 2].forEach((slot) => {
+    $("guideFile" + slot).addEventListener("change", async (e) => {
+      const f = e.target.files[0];
+      e.target.value = "";
+      if (!f) return;
+      try {
+        const url = await fileToDataURL(f);
+        await saveGuidePhoto(slot, url);
+        guideUrls[slot] = url;
+        applyGuidePhotos();
+        renderGuideSetting();
+        msg($("guideMsg"), "写真" + slot + "を保存しました。", true);
+      } catch (err) {
+        msg($("guideMsg"), "写真" + slot + "を保存できませんでした。");
+      }
+    });
+    $("guideDel" + slot).addEventListener("click", async () => {
+      try {
+        await deleteGuidePhoto(slot);
+        guideUrls[slot] = "";
+        applyGuidePhotos();
+        renderGuideSetting();
+        msg($("guideMsg"), "写真" + slot + "を消しました。", true);
+      } catch (err) {
+        msg($("guideMsg"), "写真" + slot + "を消せませんでした。");
+      }
+    });
   });
   $("pinChange").addEventListener("click", async () => {
     const v = $("pinNew").value.trim();
