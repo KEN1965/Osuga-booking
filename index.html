@@ -101,6 +101,7 @@
   .cal-note{text-align:center; font-size:13px; color:var(--muted); margin-top:8px;}
   .tour-link{background:none; border:none; color:var(--accent-dark); font-weight:800; font-size:14.5px; padding:6px 2px; white-space:nowrap; cursor:pointer; font-family:inherit;}
   .cal-note-main{color:var(--accent-dark); font-weight:800; font-size:14.5px;}
+  .soon-note{font-size:12.5px; color:var(--muted); margin-top:6px; text-align:left;}
   /* booking */
   .backbtn{background:none; border:none; color:var(--accent-dark); font-weight:700; font-size:14.5px; cursor:pointer; padding:4px 0;}
   h2.view-title{font-size:18px; margin:4px 0 10px;}
@@ -231,6 +232,7 @@
         <span class="cal-note-main">使いたい日にちを押してください</span>
         <button class="tour-link" id="tourBtn2">見学はこちら ›</button>
       </div>
+      <p class="soon-note">申し込みは、2日後から先の日でお願いします。お急ぎの場合はお電話ください（090-9500-6371）。</p>
     </div>
     <div class="card" style="margin-top:12px; text-align:center;">
       <div style="font-weight:800; font-size:16px;">見学もできます</div>
@@ -327,6 +329,7 @@
       <div class="cal-grid" id="tourGrid"></div>
       <div class="legend"><span>✕ 受付停止の日は選べません</span></div>
       <div class="cal-note" style="text-align:left;"><span class="cal-note-main">見学したい日にちを押して、申し込んでください</span></div>
+      <p class="soon-note">見学も、2日後から先の日でお願いします。お急ぎの場合はお電話ください（090-9500-6371）。</p>
       <div id="tourForm" class="hidden">
         <h3 id="tourDateTitle" style="margin-top:14px; font-size:16px;"></h3>
         <label class="f">開始時刻</label>
@@ -541,6 +544,11 @@ function closeMin() { return settings.closeMin != null ? settings.closeMin : CLO
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 const dateKey = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+// 申し込み・見学は「2日後」から（当日・翌日は受け付けない）
+function isTooSoon(key) {
+  const d = new Date(); d.setDate(d.getDate() + 2);
+  return key < dateKey(d);
+}
 const minToStr = (m) => Math.floor(m / 60) + ":" + pad(m % 60);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 const phoneNorm = (s) => String(s || "").replace(/[^0-9]/g, "");
@@ -910,6 +918,8 @@ async function renderCalendar() {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const cellCount = Math.ceil((first.getDay() + daysInMonth) / 7) * 7;
   const todayK = dateKey(new Date());
+  const soonD = new Date(); soonD.setDate(soonD.getDate() + 2);
+  const soonK = dateKey(soonD);
   let html = "";
   for (let i = 0; i < cellCount; i++) {
     const d = new Date(startDay); d.setDate(startDay.getDate() + i);
@@ -917,8 +927,9 @@ async function renderCalendar() {
     const inMonth = d.getMonth() === m;
     const dow = d.getDay();
     const past = k < todayK;
+    const soon = k >= todayK && k < soonK;
     html += '<button class="cal-cell' + (dow === 0 ? " sun" : dow === 6 ? " sat" : "")
-      + (inMonth ? "" : " dim") + (past && inMonth ? " past" : "") + '" data-date="' + k + '"' + (inMonth && !past ? "" : " disabled") + '>'
+      + (inMonth ? "" : " dim") + ((past || soon) && inMonth ? " past" : "") + '" data-date="' + k + '"' + (inMonth && !past && !soon ? "" : " disabled") + '>'
       + '<span class="num">' + d.getDate() + "</span>"
       + '<span class="dots"></span>'
       + "</button>";
@@ -926,7 +937,7 @@ async function renderCalendar() {
   $("calGrid").innerHTML = html;
   $("calGrid").querySelectorAll(".cal-cell[data-date]").forEach((el) => {
     el.addEventListener("click", () => openBooking(el.getAttribute("data-date")));
-    if (el.getAttribute("data-date") === todayK) el.classList.add("today");
+    if (el.getAttribute("data-date") === todayK && !el.disabled) el.classList.add("today");
   });
   // 予約ドットは後から付ける（台帳の読み込みが遅くても、カレンダー自体は先に出す）
   try {
@@ -1048,6 +1059,7 @@ async function submitBooking() {
   if (people && !isNaN(peopleNum) && peopleNum > ROOMS[sel.room].capNum) { msg($("bookMsg"), "参加人数が多すぎます。" + ROOMS[sel.room].capText + "。"); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("bookMsg"), "メールアドレスを確認してください。"); return; }
   if (!editingNo && isBlocked(sel.date)) { msg($("bookMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
+  if (!editingNo && isTooSoon(sel.date)) { msg($("bookMsg"), "申し込みは、2日後から先の日でお願いします。"); return; }
   // 送信直前に空きを再確認
   try { dayBookings = await fetchBookingsOnDate(sel.date); } catch (e) { /* そのまま進む */ }
   if (editingNo) dayBookings = dayBookings.filter((b) => b.no !== editingNo);
@@ -1103,6 +1115,8 @@ function renderTourCalendar() {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const cellCount = Math.ceil((first.getDay() + daysInMonth) / 7) * 7;
   const todayK = dateKey(new Date());
+  const soonD = new Date(); soonD.setDate(soonD.getDate() + 2);
+  const soonK = dateKey(soonD);
   let html = "";
   for (let i = 0; i < cellCount; i++) {
     const d = new Date(startDay); d.setDate(startDay.getDate() + i);
@@ -1110,10 +1124,11 @@ function renderTourCalendar() {
     const inMonth = d.getMonth() === m;
     const dow = d.getDay();
     const past = k < todayK;
+    const soon = k >= todayK && k < soonK;
     const blk = inMonth && isTourDayOff(k);
     html += '<button class="cal-cell' + (dow === 0 ? " sun" : dow === 6 ? " sat" : "")
-      + (inMonth ? "" : " dim") + (past && inMonth ? " past" : "") + (blk ? " blocked" : "")
-      + (tourSel.date === k ? " sel" : "") + '" data-tdate="' + k + '"' + (inMonth && !past && !blk ? "" : " disabled") + '>'
+      + (inMonth ? "" : " dim") + ((past || soon) && inMonth ? " past" : "") + (blk ? " blocked" : "")
+      + (tourSel.date === k ? " sel" : "") + '" data-tdate="' + k + '"' + (inMonth && !past && !soon && !blk ? "" : " disabled") + '>'
       + '<span class="num">' + d.getDate() + "</span>"
       + '<span class="dots">' + (blk ? '<span class="blockx">✕</span>' : "") + "</span>"
       + "</button>";
@@ -1128,7 +1143,7 @@ function renderTourCalendar() {
       $("tourForm").classList.remove("hidden");
       msg($("tourMsg"), "", true);
     });
-    if (el.getAttribute("data-tdate") === todayK) el.classList.add("today");
+    if (el.getAttribute("data-tdate") === todayK && !el.disabled) el.classList.add("today");
   });
 }
 function renderTourSlots() {
@@ -1158,6 +1173,7 @@ async function submitTour() {
   if (!name || !phoneNorm(phone) || !email) { msg($("tourMsg"), "お名前・電話番号・メールアドレスを書いてください。"); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("tourMsg"), "メールアドレスを確認してください。"); return; }
   if (isTourDayOff(tourSel.date)) { msg($("tourMsg"), "この日は見学を受け付けていません。別の日を選んでください。"); return; }
+  if (isTooSoon(tourSel.date)) { msg($("tourMsg"), "見学は、2日後から先の日でお願いします。"); return; }
   try {
     const no = await newViewingNo();
     await saveViewing({
