@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>駅前集会所（大須賀集会所）予約</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2e9e5b">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="集会所予約">
 <style>
   :root{
     --accent:#2e9e5b; --accent-dark:#227a44; --accent-soft:#e5f4ea;
@@ -35,11 +42,11 @@
   nav.tabs button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
   .card{background:#fff; border-radius:var(--radius); padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.06);}
   .hidden{display:none !important;}
-  /* トップ写真（カレンダーの上） */
-  .photo-area{margin-bottom:12px;}
-  .photo-area img{display:block; width:100%; height:168px; object-fit:cover; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  /* トップ写真（最初の画面の上部） */
+  .photo-area{margin-bottom:8px;}
+  .photo-area img{display:block; width:100%; height:150px; object-fit:cover; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
   .adm-photo-prev{display:block; width:100%; border-radius:10px; margin:6px 0 2px;}
-  .photo-pick{display:block; text-align:center; margin-top:0; padding:10px; cursor:pointer;}
+  .photo-pick{display:flex; align-items:center; justify-content:center; height:48px; text-align:center; margin-top:0; padding:0 10px; cursor:pointer;}
   /* calendar */
   .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
   .cal-head .ym{font-size:18px; font-weight:800;}
@@ -57,6 +64,9 @@
   }
   .cal-cell.sun{background:var(--sun-bg);} .cal-cell.sat{background:var(--sat-bg);}
   .cal-cell.dim{opacity:.32; cursor:default;}
+  .cal-cell.sel{box-shadow:inset 0 0 0 2.5px var(--accent);}
+  .cal-cell.blocked{background:#e7e7e7;}
+  .cal-cell .blockx{font-size:11px; font-weight:700; color:#9ca3af; line-height:1;}
   .cal-cell .num{
     width:27px; height:27px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     font-size:14.5px; font-weight:700; line-height:1;
@@ -159,6 +169,9 @@
 <body>
 <div class="wrap">
   <header class="app">
+    <div id="photoArea" class="photo-area hidden">
+      <img id="hallPhoto" alt="駅前集会所（大須賀集会所）の写真">
+    </div>
     <h1>駅前集会所（大須賀集会所）</h1>
     <p>ご利用の申し込み</p>
   </header>
@@ -172,9 +185,6 @@
 
   <!-- カレンダー -->
   <section id="view-cal">
-    <div id="photoArea" class="photo-area hidden">
-      <img id="hallPhoto" alt="駅前集会所（大須賀集会所）の写真">
-    </div>
     <div class="card">
       <div class="cal-head">
         <button id="calPrev" aria-label="前の月">‹</button>
@@ -186,6 +196,7 @@
       <div class="legend">
         <span><span class="dot t"></span>仮予約あり</span>
         <span><span class="dot c"></span>確定あり</span>
+        <span>✕ 受付停止</span>
       </div>
       <div class="cal-note">日にちを押すと、その日の申し込みができます</div>
     </div>
@@ -218,6 +229,11 @@
       </div>
       <label class="f">電話番号</label>
       <input type="tel" id="fPhone" maxlength="15" autocomplete="tel" placeholder="090-0000-0000">
+      <label class="f">メールアドレス（任意）</label>
+      <input type="email" id="fEmail" maxlength="80" autocomplete="email" placeholder="例：xxx@example.com">
+      <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">確定するとメールが届きます。</p>
+      <label class="f">集まりの名前（タイトル）</label>
+      <input type="text" id="fTitle" maxlength="50" placeholder="例：ひまわりコーラス練習、〇〇子ども会 など">
       <label class="f">使用目的</label>
       <textarea id="fPurpose" rows="3" maxlength="100" placeholder="例：ヨガ教室、会議、子ども会の集まり など"></textarea>
       <label class="f">備考</label>
@@ -247,7 +263,7 @@
       <label class="f">電話番号（申し込んだときの番号）</label>
       <input type="tel" id="lkPhone" maxlength="15" autocomplete="tel">
       <div id="lkMsg"></div>
-      <button class="btn" id="lkBtn">探す</button>
+      <button class="btn" id="lkBtn">確認・修正する</button>
       <div id="lkResult"></div>
     </div>
   </section>
@@ -265,21 +281,26 @@
       <div class="card">
         <h2 class="view-title">申し込み一覧</h2>
         <div style="display:flex; gap:7px; align-items:center;">
-          <button class="backbtn" id="admPrev">‹ 前の月</button>
+          <button class="backbtn" id="admPrev">‹</button>
           <div style="flex:1; text-align:center; font-weight:800;" id="admYM"></div>
-          <button class="backbtn" id="admNext">次の月 ›</button>
+          <button class="backbtn" id="admNext">›</button>
         </div>
+        <div class="dow-row" style="margin-top:10px;"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
+        <div id="admCal" class="cal-grid"></div>
+        <div class="legend"><span><i class="dot dot-t"></i>仮予約あり</span><span><i class="dot dot-c"></i>確定あり</span><span>✕ 受付停止</span></div>
+        <div id="admDayTitle" style="font-weight:800; margin-top:12px;"></div>
+        <div id="admBlockRow"></div>
         <div id="admList"></div>
       </div>
       <div class="card" style="margin-top:12px;">
         <h2 class="view-title">設定</h2>
         <label class="f">テーマカラー（アプリ全体の色）</label>
         <div class="theme-row" id="themeRow"></div>
-        <label class="f">カレンダーの上に出る写真</label>
+        <label class="f">最初の画面に出る写真</label>
         <img id="admPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
         <div class="grid2" style="margin-top:8px;">
           <label class="btn sub photo-pick" for="photoFile">写真を選ぶ</label>
-          <button class="btn danger hidden" id="photoDel" style="margin-top:0; padding:10px;">写真を消す</button>
+          <button class="btn danger photo-pick hidden" id="photoDel">写真を消す</button>
         </div>
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
@@ -300,7 +321,9 @@
     </div>
   </section>
 
-  <footer class="app">駅前集会所（大須賀集会所）／ 管理運営委員会</footer>
+  <footer class="app">駅前集会所（大須賀集会所）／ 管理運営委員会<br>
+    お問い合わせ：<a href="tel:09095006371" style="color:var(--accent-dark); font-weight:700;">090-9500-6371</a>
+  </footer>
   </div>
 </div>
 
@@ -346,7 +369,7 @@ const THEMES = {
   purple: { accent:"#8b5cc7", dark:"#6f43a8", soft:"#f1eafd", label:"紫" }
 };
 const DEFAULT_TEMPLATES = ["確定しました。", "受け付けました。", "時間の相談をさせてください。", "お電話いただけますか。"];
-const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice() };
+const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [] };
 
 /* ---------- 小物 ---------- */
 const $ = (id) => document.getElementById(id);
@@ -449,8 +472,14 @@ async function deletePhoto() {
   await db.collection("settings").doc("photo").delete();
 }
 function applyPhoto(url) {
-  if (url) { $("hallPhoto").src = url; $("photoArea").classList.remove("hidden"); }
-  else { $("photoArea").classList.add("hidden"); $("hallPhoto").removeAttribute("src"); }
+  photoUrl = url || "";
+  if (photoUrl) $("hallPhoto").src = photoUrl;
+  else $("hallPhoto").removeAttribute("src");
+  syncPhoto();
+}
+// 写真は最初の画面（カレンダー）の上部だけに出す
+function syncPhoto() {
+  $("photoArea").classList.toggle("hidden", !(photoUrl && curView === "cal"));
 }
 function fileToDataURL(file) {
   return new Promise((res, rej) => {
@@ -497,10 +526,14 @@ async function newBookingNo() {
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let curMonth = new Date(); curMonth.setDate(1);
 let admMonth = new Date(); admMonth.setDate(1);
+let admDay = dateKey(new Date()); // 管理者カレンダーで選んでいる日
 let sel = { date: null, room: "washitsu", start: null, hours: 1 };
 let dayBookings = [];
 let adminAuthed = false;
 let editingNo = null; // 修正中の申込番号（申込画面を流用）
+let lastLookup = null; // 最後に確認した申込（画面を開き直したときに最新を取り直す）
+let photoUrl = ""; // トップ写真（設定されていれば）
+let curView = "cal"; // 今出ている画面
 
 function applyTheme(name) {
   const t = THEMES[name] || THEMES.green;
@@ -510,6 +543,8 @@ function applyTheme(name) {
   r.setProperty("--accent-soft", t.soft);
 }
 function show(view) {
+  curView = view;
+  syncPhoto();
   ["cal", "book", "done", "lookup", "admin"].forEach((v) => $("view-" + v).classList.toggle("hidden", v !== view));
   $("tab-cal").classList.toggle("active", view === "cal" || view === "book" || view === "done");
   $("tab-lookup").classList.toggle("active", view === "lookup");
@@ -563,7 +598,14 @@ async function renderCalendar() {
       (byDate[b.date] = byDate[b.date] || []).push(b);
     });
     $("calGrid").querySelectorAll(".cal-cell[data-date]").forEach((el) => {
-      const list = byDate[el.getAttribute("data-date")] || [];
+      const key = el.getAttribute("data-date");
+      if (isBlocked(key)) {
+        el.classList.add("blocked");
+        el.disabled = true;
+        el.querySelector(".dots").innerHTML = '<span class="blockx">✕</span>';
+        return;
+      }
+      const list = byDate[key] || [];
       const hasT = list.some((b) => b.status === "tentative");
       const hasC = list.some((b) => b.status === "confirmed");
       el.querySelector(".dots").innerHTML = (hasT ? '<span class="dot t"></span>' : "") + (hasC ? '<span class="dot c"></span>' : "");
@@ -648,11 +690,16 @@ function renderPrice() {
     + '<div style="font-size:12.5px; color:var(--muted); margin-top:4px;">前後に30分の片付け・入れ替え時間を含みます（料金はかかりません）</div>';
 }
 async function submitBooking() {
+  const title = $("fTitle").value.trim();
   const org = $("fOrg").value.trim(), name = $("fName").value.trim(),
         phone = $("fPhone").value.trim(), people = $("fPeople").value.trim(),
-        purpose = $("fPurpose").value.trim(), note = $("fNote").value.trim();
+        purpose = $("fPurpose").value.trim(), note = $("fNote").value.trim(),
+        email = $("fEmail").value.trim();
   if (sel.start == null) { msg($("bookMsg"), "開始時刻を選んでください。"); return; }
+  if (!title) { msg($("bookMsg"), "集まりの名前を書いてください。"); return; }
   if (!org || !name || !phoneNorm(phone)) { msg($("bookMsg"), "団体名・代表者名・電話番号を書いてください。"); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg($("bookMsg"), "メールアドレスを確認してください。"); return; }
+  if (!editingNo && isBlocked(sel.date)) { msg($("bookMsg"), "この日は受け付けを停止しています。別の日を選んでください。"); return; }
   // 送信直前に空きを再確認
   try { dayBookings = await fetchBookingsOnDate(sel.date); } catch (e) { /* そのまま進む */ }
   if (editingNo) dayBookings = dayBookings.filter((b) => b.no !== editingNo);
@@ -665,7 +712,7 @@ async function submitBooking() {
   const rec = {
     no: editingNo || (await newBookingNo()),
     date: sel.date, room: sel.room, startMin: sel.start, endMin: end,
-    org: org, name: name, phone: phone, people: people, purpose: purpose, note: note,
+    title: title, org: org, name: name, phone: phone, people: people, purpose: purpose, note: note, email: email,
     status: bk ? bk.status : "tentative",
     reply: bk ? (bk.reply || "") : "", replyAt: bk ? (bk.replyAt || "") : "",
     createdAt: bk ? bk.createdAt : new Date().toISOString()
@@ -677,9 +724,10 @@ async function submitBooking() {
     return;
   }
   if (editingNo) {
-    msg($("bookMsg"), "直しました。", true);
     editingNo = null;
-    setTimeout(() => { show("lookup"); }, 600);
+    show("lookup");
+    await refreshLookup();
+    msg($("lkMsg"), "直しました。最新の内容を表示しています。", true);
   } else {
     $("doneNo").textContent = rec.no;
     show("done");
@@ -695,12 +743,13 @@ function statusPill(st) {
 function detailHTML(b) {
   const r = ROOMS[b.room];
   let h = '<div style="margin-top:12px;">'
+    + (b.title ? '<div style="font-size:17px; font-weight:800;">' + esc(b.title) + "</div>" : "")
     + '<div class="bk-when">' + fmtDateJP(b.date) + "　" + r.name + "</div>"
     + '<div style="font-size:15px;">' + minToStr(b.startMin) + " 〜 " + minToStr(b.endMin)
     + "（" + ((b.endMin - b.startMin) / 60) + "時間）　合計 " + (r.price * (b.endMin - b.startMin) / 60).toLocaleString() + "円</div>"
     + '<div style="margin-top:6px;">' + statusPill(b.status) + "</div>"
     + '<div class="bk-meta" style="margin-top:8px;">' + esc(b.org) + "／" + esc(b.name) + " 様／" + esc(b.phone)
-    + (b.people ? "／" + esc(b.people) + "人" : "") + "</div>";
+    + (b.people ? "／" + esc(b.people) + "人" : "") + (b.email ? "<br>" + esc(b.email) : "") + "</div>";
   if (b.purpose) h += '<label class="f">使用目的</label><div class="detail-block">' + esc(b.purpose) + "</div>";
   if (b.note) h += '<label class="f">備考</label><div class="detail-block">' + esc(b.note) + "</div>";
   if (b.reply) h += '<div class="reply-block"><b>管理運営委員会からの返信</b><br>' + esc(b.reply)
@@ -719,6 +768,7 @@ async function doLookup() {
     msg($("lkMsg"), "見つかりませんでした。番号と電話番号を確認してください。");
     return;
   }
+  lastLookup = { no: $("lkNo").value, phone: $("lkPhone").value };
   msg($("lkMsg"), "", true);
   let h = detailHTML(bk);
   if (bk.status === "tentative") {
@@ -727,34 +777,124 @@ async function doLookup() {
   } else {
     h += '<p style="font-size:13.5px; color:var(--muted); margin-top:12px;">確定した申込は、ここからは変更できません。変更は管理運営委員会へお電話ください。</p>';
   }
+  h += '<button class="btn sub" id="lkClose">確認・修正を終わる</button>';
   $("lkResult").innerHTML = h;
+  const cl = $("lkClose");
+  if (cl) cl.addEventListener("click", () => {
+    lastLookup = null;
+    $("lkResult").innerHTML = "";
+    $("lkNo").value = "";
+    $("lkPhone").value = "";
+    msg($("lkMsg"), "", true);
+  });
   const ed = $("lkEdit"), ca = $("lkCancel");
   if (ed) ed.addEventListener("click", () => {
+    $("fTitle").value = bk.title || "";
     $("fOrg").value = bk.org; $("fName").value = bk.name; $("fPhone").value = bk.phone;
     $("fPeople").value = bk.people || ""; $("fPurpose").value = bk.purpose || ""; $("fNote").value = bk.note || "";
+    $("fEmail").value = bk.email || "";
     openBooking(bk.date, bk);
   });
   if (ca) ca.addEventListener("click", async () => {
     if (!confirm("この申込を取り消しますか？")) return;
     bk.status = "cancelled";
     try { await saveBooking(bk); } catch (e) { msg($("lkMsg"), "取り消せませんでした。もう一度お試しください。"); return; }
+    lastLookup = null;
     $("lkResult").innerHTML = "";
     msg($("lkMsg"), "取り消しました。", true);
   });
 }
+// 確認画面を開き直したときは、台帳から最新を取り直して表示する（古い表示を残さない）
+async function refreshLookup() {
+  if (!lastLookup) return;
+  $("lkNo").value = lastLookup.no;
+  $("lkPhone").value = lastLookup.phone;
+  await doLookup();
+}
 
 /* ---------- 管理者 ---------- */
+// その日が受付停止かどうか
+function isBlocked(key) { return (settings.blockedDates || []).indexOf(key) >= 0; }
+// その日に仮予約・確定があるか（カレンダーのドット用）
+function dayStatus(bookings, key) {
+  const st = { t: false, c: false };
+  bookings.forEach((b) => {
+    if (b.date !== key) return;
+    if (b.status === "tentative") st.t = true;
+    if (b.status === "confirmed") st.c = true;
+  });
+  return st;
+}
+// 選んでいる日の受付停止／再開を切り替える
+async function toggleBlockDay() {
+  const list = (settings.blockedDates || []).slice();
+  const i = list.indexOf(admDay);
+  if (i >= 0) list.splice(i, 1); else list.push(admDay);
+  settings.blockedDates = list;
+  try { await saveSettings(settings); } catch (e) { /* 保存に失敗しても画面は切り替える */ }
+  renderAdmin();
+  renderCalendar();
+}
+// 月を移動したときの選択日（今月なら今日、それ以外は1日）
+function pickAdmDay() {
+  const now = new Date();
+  return (admMonth.getFullYear() === now.getFullYear() && admMonth.getMonth() === now.getMonth())
+    ? dateKey(now) : dateKey(admMonth);
+}
 async function renderAdmin() {
   const y = admMonth.getFullYear(), m = admMonth.getMonth();
   $("admYM").textContent = y + "年 " + (m + 1) + "月";
   let bookings = [];
   try { bookings = await fetchBookingsInMonth(y + "-" + pad(m + 1)); } catch (e) { /* 空で出す */ }
-  bookings = bookings.filter((b) => b.status !== "cancelled")
-    .sort((a, b) => (a.date + a.startMin).localeCompare(b.date + b.startMin) || (a.status === b.status ? 0 : a.status === "tentative" ? -1 : 1));
-  if (!bookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px; text-align:center;">この月の申込はありません</p>'; return; }
-  $("admList").innerHTML = bookings.map((b) => {
+  bookings = bookings.filter((b) => b.status !== "cancelled");
+  // 管理者カレンダー（申込側と同じ見た目）
+  const startDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+  const total = Math.ceil((startDow + daysInMonth) / 7) * 7;
+  const todayKey = dateKey(new Date());
+  let cells = "";
+  for (let i = 0; i < total; i++) {
+    const dnum = i - startDow + 1;
+    let dObj, other = false;
+    if (dnum < 1) { dObj = new Date(y, m - 1, prevDays + dnum); other = true; }
+    else if (dnum > daysInMonth) { dObj = new Date(y, m + 1, dnum - daysInMonth); other = true; }
+    else dObj = new Date(y, m, dnum);
+    const key = dateKey(dObj);
+    const st = other ? { t: false, c: false } : dayStatus(bookings, key);
+    const blk = !other && isBlocked(key);
+    let dots = "";
+    if (blk) dots = '<span class="blockx">✕</span>';
+    else {
+      if (st.t) dots += '<i class="dot dot-t"></i>';
+      if (st.c) dots += '<i class="dot dot-c"></i>';
+    }
+    const dow = dObj.getDay();
+    cells += '<button class="cal-cell' + (other ? " dim" : "") + (blk ? " blocked" : "") + (dow === 0 ? " sun" : "") + (dow === 6 ? " sat" : "") + (key === admDay ? " sel" : "") + '" data-admday="' + key + '">'
+      + '<span class="' + (key === todayKey && !other ? "today-num" : "num") + '">' + dObj.getDate() + "</span>"
+      + '<span class="dots">' + dots + "</span></button>";
+  }
+  $("admCal").innerHTML = cells;
+  $("admCal").querySelectorAll("button[data-admday]").forEach((el) =>
+    el.addEventListener("click", () => {
+      admDay = el.getAttribute("data-admday");
+      const d = new Date(admDay + "T00:00:00");
+      admMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      renderAdmin();
+    }));
+  // 選んだ日の申込だけをカードで出す
+  const dayBookings = bookings.filter((b) => b.date === admDay)
+    .sort((a, b) => (a.startMin - b.startMin) || (a.status === b.status ? 0 : a.status === "tentative" ? -1 : 1));
+  $("admDayTitle").textContent = fmtDateJP(admDay) + "の申込";
+  const blkNow = isBlocked(admDay);
+  $("admBlockRow").innerHTML = (blkNow ? '<div style="font-size:13.5px; color:#6b7280; margin-top:2px;">この日は受付を停止しています</div>' : "")
+    + '<button class="btn sub" id="admBlockBtn">' + (blkNow ? "受け付けを再開する" : "この日は受け付けない") + "</button>";
+  $("admBlockBtn").addEventListener("click", toggleBlockDay);
+  if (!dayBookings.length) { $("admList").innerHTML = '<p style="color:var(--muted); font-size:14px;">この日の申込はありません</p>'; return; }
+  $("admList").innerHTML = dayBookings.map((b) => {
     const r = ROOMS[b.room];
-    return '<div class="bk"><div class="bk-head"><div class="bk-when">' + fmtDateJP(b.date) + " " + minToStr(b.startMin) + "〜" + minToStr(b.endMin) + "　" + r.name + "</div>" + statusPill(b.status) + "</div>"
+    return '<div class="bk"><div class="bk-head"><div class="bk-when">' + minToStr(b.startMin) + "〜" + minToStr(b.endMin) + "　" + r.name + "</div>" + statusPill(b.status) + "</div>"
+      + (b.title ? '<div style="font-size:16px; font-weight:800; margin-top:2px;">' + esc(b.title) + "</div>" : "")
       + '<div class="bk-meta">' + esc(b.org) + "／" + esc(b.name) + " 様／" + esc(b.phone) + (b.people ? "／" + esc(b.people) + "人" : "")
       + "／" + (r.price * (b.endMin - b.startMin) / 60).toLocaleString() + "円／申込番号 " + b.no + "</div>"
       + (b.purpose ? '<div class="detail-block">' + esc(b.purpose) + "</div>" : "")
@@ -763,6 +903,7 @@ async function renderAdmin() {
       + '<div class="bk-actions">'
       + (b.status === "tentative" ? '<button class="primary" data-act="confirm" data-no="' + b.no + '">確定する</button>' : "")
       + '<button data-act="reply" data-no="' + b.no + '">返信する</button>'
+      + (b.email ? '<button data-act="mail" data-no="' + b.no + '">メールで知らせる</button>' : "")
       + '<button class="warn" data-act="cancel" data-no="' + b.no + '">取り消す</button>'
       + "</div>"
       + '<div class="hidden" id="reply-' + b.no + '"><div class="tpl-chips">'
@@ -780,6 +921,30 @@ async function adminAction(act, no) {
   if (act === "reply") { $("reply-" + no).classList.toggle("hidden"); return; }
   const bk = await fetchBooking(no);
   if (!bk) return;
+  if (act === "mail") {
+    if (!bk.email) return;
+    const r = ROOMS[bk.room];
+    const fee = (r.price * (bk.endMin - bk.startMin) / 60).toLocaleString();
+    const confirmed = bk.status === "confirmed";
+    const subject = confirmed ? "【駅前集会所】ご予約が確定しました" : "【駅前集会所】申込を受け付けました";
+    const lines = [
+      bk.name + " 様",
+      "",
+      confirmed ? "下記のご予約が確定しました。" : "下記の申込を受け付けました。確定までしばらくお待ちください。",
+      "",
+      "集まりの名前：" + (bk.title || ""),
+      "日時：" + fmtDateJP(bk.date) + " " + minToStr(bk.startMin) + "〜" + minToStr(bk.endMin),
+      "部屋：" + r.name,
+      "料金：" + fee + "円",
+      "申込番号：" + bk.no,
+      "",
+      "駅前集会所（大須賀集会所）管理運営委員会"
+    ];
+    location.href = "mailto:" + encodeURIComponent(bk.email)
+      + "?subject=" + encodeURIComponent(subject)
+      + "&body=" + encodeURIComponent(lines.join("\n"));
+    return;
+  }
   if (act === "confirm") { bk.status = "confirmed"; await saveBooking(bk); }
   if (act === "cancel") {
     if (!confirm("この申込を取り消しますか？")) return;
@@ -824,10 +989,10 @@ async function init() {
   renderDow();
   renderCalendar();
   // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
-  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); }).catch(() => {});
+  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); }).catch(() => {});
   fetchPhoto().then(applyPhoto).catch(() => {});
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
-  $("tab-lookup").addEventListener("click", () => show("lookup"));
+  $("tab-lookup").addEventListener("click", () => { show("lookup"); refreshLookup(); });
   $("tab-admin").addEventListener("click", () => show("admin"));
   $("calPrev").addEventListener("click", () => { curMonth.setMonth(curMonth.getMonth() - 1); renderCalendar(); });
   $("calNext").addEventListener("click", () => { curMonth.setMonth(curMonth.getMonth() + 1); renderCalendar(); });
@@ -846,8 +1011,8 @@ async function init() {
       msg($("pinMsg"), "暗証番号が違います。");
     }
   });
-  $("admPrev").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() - 1); renderAdmin(); });
-  $("admNext").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() + 1); renderAdmin(); });
+  $("admPrev").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() - 1); admDay = pickAdmDay(); renderAdmin(); });
+  $("admNext").addEventListener("click", () => { admMonth.setMonth(admMonth.getMonth() + 1); admDay = pickAdmDay(); renderAdmin(); });
   $("tplAdd").addEventListener("click", async () => {
     const v = $("tplNew").value.trim();
     if (!v) return;
@@ -894,6 +1059,14 @@ async function init() {
   });
 }
 document.addEventListener("DOMContentLoaded", init);
+</script>
+<script>
+// ホーム画面に追加したとき、アプリのように開くための仕組み（失敗しても画面には影響しない）
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
