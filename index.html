@@ -244,6 +244,7 @@
     <button class="backbtn" id="bookBack">‹ カレンダーに戻る</button>
     <div class="card">
       <h2 class="view-title" id="bookDateTitle"></h2>
+      <p style="font-size:13px; color:var(--muted); margin:0 0 4px;">利用時間は <span id="bookHours"></span> です</p>
       <div class="step-label">1. 部屋を選んでください</div>
       <div class="rooms" id="roomRow"></div>
       <div class="step-label">2. 開始時刻を選んでください</div>
@@ -441,6 +442,19 @@
       </div>
       <div class="card" style="margin-top:12px;">
         <h2 class="view-title">設定</h2>
+        <label class="f">利用時間（集会所を使える時間）</label>
+        <div class="grid2">
+          <div><label class="f" style="margin-top:0;">何時から</label><select id="openSel"></select></div>
+          <div><label class="f" style="margin-top:0;">何時まで</label><select id="closeSel"></select></div>
+        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">行事などで夜まで使うときは、ここで延ばせます。申し込みの時間は、この範囲から選ぶ形になります。</p>
+        <label class="f">電話の受付時間</label>
+        <div class="grid2">
+          <div><label class="f" style="margin-top:0;">何時から</label><select id="telStartSel"></select></div>
+          <div><label class="f" style="margin-top:0;">何時まで</label><select id="telEndSel"></select></div>
+        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">ページの一番下の電話番号の横に出ます。ページからの申し込み・見学は、いつでもできます。</p>
+        <div id="hoursMsg"></div>
         <label class="f">テーマカラー（アプリ全体の色）</label>
         <div class="theme-row" id="themeRow"></div>
         <label class="f">ヘッダー画像</label>
@@ -470,7 +484,7 @@
   </section>
 
   <footer class="app">駅前集会所（大須賀集会所）／ 管理運営委員会<br>
-    お問い合わせ：<a href="tel:09095006371" style="color:var(--accent-dark); font-weight:700;">090-9500-6371</a>
+    お問い合わせ：<a href="tel:09095006371" style="color:var(--accent-dark); font-weight:700;">090-9500-6371</a><span id="telHours"></span>
   </footer>
   </div>
 </div>
@@ -518,7 +532,9 @@ const THEMES = {
   purple: { accent:"#8b5cc7", dark:"#6f43a8", soft:"#f1eafd", label:"紫" }
 };
 const DEFAULT_TEMPLATES = ["確定しました。", "受け付けました。", "時間の相談をさせてください。", "お電話いただけますか。"];
-const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false, headerSampleOff: false, guideSampleOff: false };
+const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false, headerSampleOff: false, guideSampleOff: false, openMin: 540, closeMin: 1080, telStartMin: 540, telEndMin: 1080 };
+function openMin() { return settings.openMin != null ? settings.openMin : OPEN_MIN; }
+function closeMin() { return settings.closeMin != null ? settings.closeMin : CLOSE_MIN; }
 
 /* ---------- 小物 ---------- */
 const $ = (id) => document.getElementById(id);
@@ -945,6 +961,7 @@ async function openBooking(date, editBk) {
   sel = { date: date, room: editBk ? editBk.room : "washitsu", start: editBk ? editBk.startMin : null, hours: editBk ? (editBk.endMin - editBk.startMin) / 60 : 1 };
   editingNo = editBk ? editBk.no : null;
   $("bookDateTitle").textContent = fmtDateJP(date) + (editBk ? " の申込を直す" : " の申し込み");
+  $("bookHours").textContent = minToStr(openMin()) + "〜" + minToStr(closeMin());
   $("bookSubmit").textContent = editBk ? "この内容で直す" : "この内容で申し込む";
   try { dayBookings = await fetchBookingsOnDate(date); } catch (e) { dayBookings = []; }
   if (editingNo) dayBookings = dayBookings.filter((b) => b.no !== editingNo);
@@ -965,7 +982,7 @@ function renderRooms() {
 }
 function renderSlots() {
   let html = "";
-  for (let t = OPEN_MIN; t < CLOSE_MIN; t += 30) {
+  for (let t = openMin(); t < closeMin(); t += 30) {
     const st = slotState(dayBookings, sel.room, t, t + 30);
     let cls = "slot", label = "空き";
     if (st === "tentative") { cls += " busy t"; label = "仮予約"; }
@@ -982,7 +999,7 @@ function renderSlots() {
 function maxHours() {
   if (sel.start == null) return 0;
   let h = 0;
-  while (sel.start + (h + 1) * 60 <= CLOSE_MIN) {
+  while (sel.start + (h + 1) * 60 <= closeMin()) {
     if (slotState(dayBookings, sel.room, sel.start, sel.start + (h + 1) * 60) !== "free") break;
     h++;
   }
@@ -1111,8 +1128,8 @@ function renderTourSlots() {
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const dowT = new Date(tourSel.date + "T00:00:00").getDay();
   const isWE = dowT === 0 || dowT === 6;
-  const tFrom = isWE ? (settings.tourStartMinWE != null ? settings.tourStartMinWE : OPEN_MIN) : (settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN);
-  const tTo = isWE ? (settings.tourEndMinWE != null ? settings.tourEndMinWE : CLOSE_MIN - 30) : (settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30);
+  const tFrom = isWE ? (settings.tourStartMinWE != null ? settings.tourStartMinWE : openMin()) : (settings.tourStartMin != null ? settings.tourStartMin : openMin());
+  const tTo = isWE ? (settings.tourEndMinWE != null ? settings.tourEndMinWE : closeMin() - 30) : (settings.tourEndMin != null ? settings.tourEndMin : closeMin() - 30);
   let html = "";
   for (let t = tFrom; t <= tTo; t += 30) {
     const dis = isToday && t <= nowMin;
@@ -1463,18 +1480,71 @@ async function adminAction(act, no) {
   }
   renderAdmin();
 }
+// 電話の受付時間をフッターに出す
+function renderTelHours() {
+  const el = $("telHours");
+  if (!el) return;
+  const a = settings.telStartMin != null ? settings.telStartMin : OPEN_MIN;
+  const b = settings.telEndMin != null ? settings.telEndMin : CLOSE_MIN;
+  el.textContent = "（電話は" + minToStr(a) + "〜" + minToStr(b) + "）";
+}
+// 利用時間と電話の受付時間の設定（管理者）
+function renderHoursSetting() {
+  const oSel = $("openSel"), cSel = $("closeSel"), tsSel = $("telStartSel"), teSel = $("telEndSel");
+  if (!oSel || !cSel || !tsSel || !teSel) return;
+  let opts = "";
+  for (let t = 6 * 60; t <= 22 * 60; t += 30) opts += '<option value="' + t + '">' + minToStr(t) + "</option>";
+  oSel.innerHTML = opts; cSel.innerHTML = opts; tsSel.innerHTML = opts; teSel.innerHTML = opts;
+  oSel.value = String(openMin()); cSel.value = String(closeMin());
+  tsSel.value = String(settings.telStartMin != null ? settings.telStartMin : OPEN_MIN);
+  teSel.value = String(settings.telEndMin != null ? settings.telEndMin : CLOSE_MIN);
+  if (oSel.dataset.wired) return;
+  oSel.dataset.wired = "1";
+  const save = async () => {
+    try { await saveSettings(settings); msg($("hoursMsg"), "時間の設定を変えました。", true); }
+    catch (e) { msg($("hoursMsg"), "保存できませんでした。"); }
+  };
+  const onHours = () => {
+    let a = parseInt(oSel.value, 10), b = parseInt(cSel.value, 10);
+    if (b < a + 60) { b = a + 60; cSel.value = String(b); }
+    settings.openMin = a; settings.closeMin = b;
+    // 見学の時間が新しい範囲の外に出ていたら、範囲内に戻す
+    const hi = b - 30;
+    ["tourStartMin", "tourEndMin", "tourStartMinWE", "tourEndMinWE"].forEach((k) => {
+      if (settings[k] != null) settings[k] = Math.min(Math.max(settings[k], a), hi);
+    });
+    renderTelHours();
+    renderTourTimeSetting();
+    save();
+  };
+  const onTel = () => {
+    let a = parseInt(tsSel.value, 10), b = parseInt(teSel.value, 10);
+    if (b < a) { b = a; teSel.value = String(b); }
+    settings.telStartMin = a; settings.telEndMin = b;
+    renderTelHours();
+    save();
+  };
+  oSel.addEventListener("change", onHours);
+  cSel.addEventListener("change", onHours);
+  tsSel.addEventListener("change", onTel);
+  teSel.addEventListener("change", onTel);
+}
 // 見学の設定（管理者）：平日・土日の時間と、土日休み
 function renderTourTimeSetting() {
   const sSel = $("tourStartSel"), eSel = $("tourEndSel");
   const sSelW = $("tourStartSelWE"), eSelW = $("tourEndSelWE"), offBox = $("tourWeekendOff");
   if (!sSel || !eSel || !sSelW || !eSelW || !offBox) return;
   let opts = "";
-  for (let t = OPEN_MIN; t < CLOSE_MIN; t += 30) opts += '<option value="' + t + '">' + minToStr(t) + "</option>";
+  for (let t = openMin(); t < closeMin(); t += 30) opts += '<option value="' + t + '">' + minToStr(t) + "</option>";
   sSel.innerHTML = opts; eSel.innerHTML = opts; sSelW.innerHTML = opts; eSelW.innerHTML = opts;
-  sSel.value = String(settings.tourStartMin != null ? settings.tourStartMin : OPEN_MIN);
-  eSel.value = String(settings.tourEndMin != null ? settings.tourEndMin : CLOSE_MIN - 30);
-  sSelW.value = String(settings.tourStartMinWE != null ? settings.tourStartMinWE : OPEN_MIN);
-  eSelW.value = String(settings.tourEndMinWE != null ? settings.tourEndMinWE : CLOSE_MIN - 30);
+  sSel.value = String(settings.tourStartMin != null ? settings.tourStartMin : openMin());
+  eSel.value = String(settings.tourEndMin != null ? settings.tourEndMin : closeMin() - 30);
+  sSelW.value = String(settings.tourStartMinWE != null ? settings.tourStartMinWE : openMin());
+  eSelW.value = String(settings.tourEndMinWE != null ? settings.tourEndMinWE : closeMin() - 30);
+  if (!sSel.value) sSel.value = String(openMin());
+  if (!eSel.value) eSel.value = String(closeMin() - 30);
+  if (!sSelW.value) sSelW.value = String(openMin());
+  if (!eSelW.value) eSelW.value = String(closeMin() - 30);
   offBox.checked = !!settings.tourWeekendOff;
   $("tourWeRow").classList.toggle("hidden", offBox.checked);
   if (sSel.dataset.wired) return;
@@ -1525,8 +1595,9 @@ async function init() {
   applyTheme(settings.theme);
   renderDow();
   renderCalendar();
+  renderTelHours();
   // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
-  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {}); applyGuidePhotos(); }).catch(() => {});
+  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); renderTelHours(); fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {}); applyGuidePhotos(); }).catch(() => {});
   fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {});
   loadGuidePhotos();
   renderLastBar();
@@ -1563,7 +1634,7 @@ async function init() {
       adminAuthed = true;
       $("adminLogin").classList.add("hidden");
       $("adminMain").classList.remove("hidden");
-      renderAdmin(); renderThemeRow(); renderPhotoSetting(); renderGuideSetting(); renderTourTimeSetting();
+      renderAdmin(); renderThemeRow(); renderPhotoSetting(); renderGuideSetting(); renderTourTimeSetting(); renderHoursSetting();
       msg($("pinMsg"), "", true);
     } else {
       msg($("pinMsg"), "暗証番号が違います。");
