@@ -49,6 +49,8 @@
   .access{margin-top:14px; border-top:1px solid var(--line); padding-top:12px; text-align:left;}
   .access p{font-size:14px; margin:4px 0;}
   .access a.btn{text-decoration:none;}
+  .map-img{width:100%; border-radius:12px; margin-top:8px; display:block;}
+  .map-link{display:inline-block; margin-top:6px; font-size:13.5px;}
   .guide-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
   .guide-img{display:block; width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:12px;}
   .guide-img.solo{grid-column:1 / -1; aspect-ratio:auto; object-fit:contain;}
@@ -200,6 +202,13 @@
 
   <!-- カレンダー -->
   <section id="view-cal">
+    <div class="card hidden" id="lastBar" style="margin-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="flex:1; font-size:14px;">さっきの<span id="lastKind">申込</span>があります<br><b>番号 <span id="lastNo"></span></b></div>
+        <button class="btn" id="lastOpen" style="width:auto; padding:10px 18px; margin:0;">見る</button>
+        <button class="btn sub" id="lastClose" style="width:auto; padding:10px 14px; margin:0;">消す</button>
+      </div>
+    </div>
     <div class="card">
       <div class="cal-head">
         <button id="calPrev" aria-label="前の月">‹</button>
@@ -273,7 +282,9 @@
       <div class="access">
         <b>場所のご案内</b>
         <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
-        <a class="btn sub" href="https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1" target="_blank" rel="noopener">地図を開く</a>
+        <a href="https://www.google.com/maps/search/?api=1&query=34.3978464,132.4732989" target="_blank" rel="noopener"><img class="map-img" src="map.jpg" alt="集会所の地図" onerror="this.parentNode.style.display='none'"></a>
+        <p style="font-size:11px; color:var(--muted); margin-top:4px;">地図：© OpenStreetMap contributors</p>
+        <a class="map-link" href="https://www.google.com/maps/search/?api=1&query=34.3978464,132.4732989" target="_blank" rel="noopener">大きく開く・経路を見る</a>
         <div class="guide-grid hidden" id="doneGuides">
           <img id="doneGuide1" class="guide-img hidden" alt="案内の写真">
           <img id="doneGuide2" class="guide-img hidden" alt="案内の写真">
@@ -333,7 +344,9 @@
       <div class="access">
         <b>場所のご案内</b>
         <p>広島市南区大須賀町9-1<br>広島駅から徒歩2分です。</p>
-        <a class="btn sub" href="https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1" target="_blank" rel="noopener">地図を開く</a>
+        <a href="https://www.google.com/maps/search/?api=1&query=34.3978464,132.4732989" target="_blank" rel="noopener"><img class="map-img" src="map.jpg" alt="集会所の地図" onerror="this.parentNode.style.display='none'"></a>
+        <p style="font-size:11px; color:var(--muted); margin-top:4px;">地図：© OpenStreetMap contributors</p>
+        <a class="map-link" href="https://www.google.com/maps/search/?api=1&query=34.3978464,132.4732989" target="_blank" rel="noopener">大きく開く・経路を見る</a>
         <div class="guide-grid hidden" id="tourGuides">
           <img id="tourGuide1" class="guide-img hidden" alt="案内の写真">
           <img id="tourGuide2" class="guide-img hidden" alt="案内の写真">
@@ -355,12 +368,14 @@
   <section id="view-lookup" class="hidden">
     <div class="card">
       <h2 class="view-title">申込の確認・修正</h2>
-      <label class="f">申込番号</label>
-      <input type="tel" id="lkNo" maxlength="6" inputmode="numeric" placeholder="6桁の番号">
-      <label class="f">電話番号（申し込んだときの番号）</label>
-      <input type="tel" id="lkPhone" maxlength="15" autocomplete="tel">
-      <div id="lkMsg"></div>
-      <button class="btn" id="lkBtn">確認・修正する</button>
+      <div id="lkForm">
+        <label class="f">申込番号</label>
+        <input type="tel" id="lkNo" maxlength="6" inputmode="numeric" placeholder="6桁の番号">
+        <label class="f">電話番号（申し込んだときの番号）</label>
+        <input type="tel" id="lkPhone" maxlength="15" autocomplete="tel">
+        <div id="lkMsg"></div>
+        <button class="btn" id="lkBtn">確認・修正する</button>
+      </div>
       <div id="lkResult"></div>
     </div>
   </section>
@@ -517,7 +532,7 @@ if (!DEMO && window.firebase) {
 }
 
 /* ---------- 定数 ---------- */
-const MAP_URL = "https://www.google.com/maps/search/?api=1&query=%E9%A7%85%E5%89%8D%E9%9B%86%E4%BC%9A%E6%89%80%20%E5%BA%83%E5%B3%B6%E5%B8%82%E5%8D%97%E5%8C%BA%E5%A4%A7%E9%A0%88%E8%B3%80%E7%94%BA9-1";
+const MAP_URL = "https://www.google.com/maps/search/?api=1&query=34.3978464,132.4732989";
 const ROOMS = {
   washitsu: { name: "和室",   price: 500,  cap: "約10人" },
   hall:     { name: "ホール", price: 1000, cap: "約30人" },
@@ -816,9 +831,30 @@ function show(view) {
   $("tab-admin").classList.toggle("active", view === "admin");
   const sa = $("scrollArea");
   if (sa) sa.scrollTop = 0;
+  if (view === "cal") renderLastBar();
 }
 function msg(el, text, ok) {
   el.innerHTML = text ? '<div class="msg ' + (ok ? "ok" : "err") + '">' + esc(text) + "</div>" : "";
+}
+
+/* ---------- さっきの申込（地図から戻っても番号を見られるように） ---------- */
+const LS_LAST = "oosuga_last_v1";
+function saveLast(type, no) { lsWrite(LS_LAST, { type: type, no: no, at: Date.now() }); }
+function readLast() {
+  const v = lsRead(LS_LAST, null);
+  if (!v || !v.no) return null;
+  if (Date.now() - (v.at || 0) > 7 * 24 * 60 * 60 * 1000) return null;
+  return v;
+}
+function renderLastBar() {
+  const bar = $("lastBar");
+  if (!bar) return;
+  const v = readLast();
+  bar.classList.toggle("hidden", !v);
+  if (v) {
+    $("lastKind").textContent = v.type === "tour" ? "見学の申込" : "申込";
+    $("lastNo").textContent = v.no;
+  }
 }
 
 /* ---------- カレンダー ---------- */
@@ -995,6 +1031,7 @@ async function submitBooking() {
     msg($("lkMsg"), "直しました。最新の内容を表示しています。", true);
   } else {
     $("doneNo").textContent = rec.no;
+    saveLast("book", rec.no);
     show("done");
   }
 }
@@ -1082,6 +1119,7 @@ async function submitTour() {
       status: "tentative", createdAt: new Date().toISOString()
     });
     $("tourDoneNo").textContent = no;
+    saveLast("tour", no);
     show("tourdone");
   } catch (e) {
     msg($("tourMsg"), "送れませんでした。電波の良いところでもう一度お試しください。");
@@ -1108,6 +1146,7 @@ async function doLookup() {
   const no = $("lkNo").value.trim();
   const phone = phoneNorm($("lkPhone").value);
   $("lkResult").innerHTML = "";
+  $("lkForm").classList.remove("hidden");
   if (!no || !phone) { msg($("lkMsg"), "申込番号と電話番号を書いてください。"); return; }
   let bk = null;
   try { bk = await fetchBooking(no); } catch (e) { /* 下で案内 */ }
@@ -1117,9 +1156,10 @@ async function doLookup() {
   }
   lastLookup = { no: $("lkNo").value, phone: $("lkPhone").value };
   msg($("lkMsg"), "", true);
+  $("lkForm").classList.add("hidden");
   let h = detailHTML(bk);
   if (bk.status === "tentative") {
-    h += '<button class="btn" id="lkEdit">日時や内容を直す</button>'
+    h += '<button class="btn" id="lkEdit">確認・修正する</button>'
        + '<button class="btn danger" id="lkCancel">この申込を取り消す</button>';
   } else {
     h += '<p style="font-size:13.5px; color:var(--muted); margin-top:12px;">確定した申込は、ここからは変更できません。変更は管理運営委員会へお電話ください。</p>';
@@ -1133,6 +1173,8 @@ async function doLookup() {
     $("lkNo").value = "";
     $("lkPhone").value = "";
     msg($("lkMsg"), "", true);
+    $("lkForm").classList.remove("hidden");
+    $("scrollArea").scrollTop = 0;
   });
   const ed = $("lkEdit"), ca = $("lkCancel");
   if (ed) ed.addEventListener("click", () => {
@@ -1148,6 +1190,8 @@ async function doLookup() {
     try { await saveBooking(bk); } catch (e) { msg($("lkMsg"), "取り消せませんでした。もう一度お試しください。"); return; }
     lastLookup = null;
     $("lkResult").innerHTML = "";
+    $("lkForm").classList.remove("hidden");
+    $("scrollArea").scrollTop = 0;
     msg($("lkMsg"), "取り消しました。", true);
   });
 }
@@ -1492,6 +1536,7 @@ async function init() {
   fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); }).catch(() => {});
   fetchPhoto().then(applyPhoto).catch(() => {});
   loadGuidePhotos();
+  renderLastBar();
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tab-lookup").addEventListener("click", () => { show("lookup"); refreshLookup(); });
   $("tab-admin").addEventListener("click", () => show("admin"));
@@ -1500,6 +1545,16 @@ async function init() {
   $("bookBack").addEventListener("click", () => { editingNo = null; show("cal"); renderCalendar(); });
   $("bookSubmit").addEventListener("click", submitBooking);
   $("doneBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
+  $("lastOpen").addEventListener("click", () => {
+    const v = readLast();
+    if (!v) { renderLastBar(); return; }
+    if (v.type === "tour") { $("tourDoneNo").textContent = v.no; show("tourdone"); }
+    else { $("doneNo").textContent = v.no; show("done"); }
+  });
+  $("lastClose").addEventListener("click", () => {
+    localStorage.removeItem(LS_LAST);
+    renderLastBar();
+  });
   $("tourBtn").addEventListener("click", () => { show("tour"); renderTourCalendar(); });
   $("tourBack").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tourPrev").addEventListener("click", () => { tourMonth.setMonth(tourMonth.getMonth() - 1); renderTourCalendar(); });
