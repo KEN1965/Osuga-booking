@@ -45,6 +45,12 @@
   /* トップ写真（最初の画面の上部） */
   .photo-area{margin-bottom:8px;}
   .photo-area img{display:block; width:100%; height:126px; object-fit:cover; object-position:50% 0%; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  body.top-mode header.app, body.top-mode nav.tabs{display:none;}
+  .top-photo{margin:2px 0 10px;}
+  .top-photo img{display:block; width:100%; height:auto; border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .top-title{text-align:center; font-size:21px; font-weight:800; margin:4px 0 0;}
+  .top-sub{text-align:center; color:var(--muted); font-size:13.5px; margin:2px 0 18px;}
+  .top-main{padding:16px; font-size:17px;}
   .adm-photo-prev{display:block; width:100%; border-radius:10px; margin:6px 0 2px;}
   .access{margin-top:14px; border-top:1px solid var(--line); padding-top:12px; text-align:left;}
   .access p{font-size:14px; margin:4px 0;}
@@ -205,6 +211,19 @@
     <button id="tab-admin">管理者</button>
   </nav>
   <div class="scroll-area" id="scrollArea">
+
+  <!-- 最初の画面 -->
+  <section id="view-top">
+    <div id="topPhotoArea" class="top-photo hidden">
+      <img id="topPhotoImg" alt="駅前集会所（大須賀集会所）" onerror="document.getElementById('topPhotoArea').classList.add('hidden')">
+    </div>
+    <h1 class="top-title">駅前集会所（大須賀集会所）</h1>
+    <p class="top-sub">ご利用の申し込み</p>
+    <button class="btn top-main" id="topBookBtn">利用を申し込む</button>
+    <button class="btn sub" id="topTourBtn" style="margin-top:10px;">見学を申し込む</button>
+    <button class="btn sub" id="topLookupBtn" style="margin-top:10px;">申込の確認・修正</button>
+    <button class="btn sub" id="topAdminBtn" style="margin-top:10px;">管理者</button>
+  </section>
 
   <!-- カレンダー -->
   <section id="view-cal">
@@ -470,6 +489,19 @@
         </div>
         <input type="file" id="photoFile" accept="image/*" class="hidden">
         <div id="photoMsg"></div>
+        <label class="f">最初の画面</label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; margin-top:2px;"><input type="checkbox" id="admTopEnabled" style="width:20px; height:20px;"> 最初の画面を出す</label>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:4px;">ページを開いたときに、写真と「利用を申し込む」ボタンが出る画面です。出さない場合は、カレンダーが最初に出ます。</p>
+        <div id="topSetMsg"></div>
+        <label class="f">最初の画面の写真</label>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">ヘッダー画像とは別に変えられます。はじめは見本の写真が入っています。</p>
+        <img id="admTopPhotoPrev" class="adm-photo-prev hidden" alt="今の写真">
+        <div class="grid2" style="margin-top:8px;">
+          <label class="btn sub photo-pick" for="topPhotoFile">写真を選ぶ</label>
+          <button class="btn danger photo-pick hidden" id="topPhotoDel">写真を消す</button>
+        </div>
+        <input type="file" id="topPhotoFile" accept="image/*" class="hidden">
+        <div id="topPhotoMsg"></div>
         <label class="f">案内の写真（申し込みが終わった画面に出ます）</label>
         <p style="font-size:12.5px; color:var(--muted); margin-top:2px;">和室・ホール・間取り図など、4枚まで。終わった画面では横に2枚ずつ並びます。写真を押すと消せます。はじめは見本が2枚（和室・ホール）入っています。</p>
         <div class="guide-grid" id="admGuideGrid" style="margin-top:8px;"></div>
@@ -536,7 +568,7 @@ const THEMES = {
   purple: { accent:"#8b5cc7", dark:"#6f43a8", soft:"#f1eafd", label:"紫" }
 };
 const DEFAULT_TEMPLATES = ["確定しました。", "受け付けました。", "時間の相談をさせてください。", "お電話いただけますか。"];
-const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false, headerSampleOff: false, guideSampleOff: false, openMin: 540, closeMin: 1080, telStartMin: 540, telEndMin: 1080 };
+const DEFAULT_SETTINGS = { theme: "green", pin: "0000", templates: DEFAULT_TEMPLATES.slice(), blockedDates: [], bookingBlockedDates: [], tourStartMin: 540, tourEndMin: 1050, tourBlockedDates: [], tourStartMinWE: 540, tourEndMinWE: 1050, tourWeekendOff: false, headerSampleOff: false, guideSampleOff: false, openMin: 540, closeMin: 1080, telStartMin: 540, telEndMin: 1080, topEnabled: true, topSampleOff: false };
 function openMin() { return settings.openMin != null ? settings.openMin : OPEN_MIN; }
 function closeMin() { return settings.closeMin != null ? settings.closeMin : CLOSE_MIN; }
 
@@ -692,6 +724,25 @@ async function deletePhoto() {
   await db.collection("settings").doc("photo").delete();
 }
 
+/* ---------- 最初の画面の写真（ヘッダー画像とは別） ---------- */
+const LS_TPH = "oosuga_topphoto_v1";
+async function fetchTopPhoto() {
+  if (DEMO) return lsRead(LS_TPH, "");
+  if (!db) return "";
+  const doc = await withTimeout(db.collection("settings").doc("topphoto").get(), 6000);
+  return doc.exists ? (doc.data().data || "") : "";
+}
+async function saveTopPhoto(dataUrl) {
+  if (DEMO) { lsWrite(LS_TPH, dataUrl); return; }
+  if (!db) throw new Error("no db");
+  await db.collection("settings").doc("topphoto").set({ data: dataUrl });
+}
+async function deleteTopPhoto() {
+  if (DEMO) { localStorage.removeItem(LS_TPH); return; }
+  if (!db) throw new Error("no db");
+  await db.collection("settings").doc("topphoto").delete();
+}
+
 /* ---------- 案内の写真（完了画面に出す、2枚まで） ---------- */
 async function fetchGuidePhoto(slot) {
   if (DEMO) return lsRead("oosuga_guide" + slot + "_v1", "");
@@ -715,6 +766,9 @@ const GUIDE_SAMPLES = ["washitsu-sample.jpg", "hall-sample.jpg"];
 const HEADER_SAMPLE = "header-sample.jpg";
 function effectivePhoto(saved) {
   return saved || (settings.headerSampleOff ? "" : HEADER_SAMPLE);
+}
+function effectiveTopPhoto(saved) {
+  return saved || (settings.topSampleOff ? "" : HEADER_SAMPLE);
 }
 function displayGuideUrls() {
   const saved = [1, 2, 3, 4].map((s) => guideUrls[s] || "").filter(Boolean);
@@ -805,6 +859,16 @@ function applyPhoto(url) {
 function syncPhoto() {
   $("photoArea").classList.toggle("hidden", !(photoUrl && curView === "cal"));
 }
+function applyTopPhoto(url) {
+  topPhotoUrl = url || "";
+  if (topPhotoUrl) {
+    $("topPhotoImg").src = topPhotoUrl;
+    $("topPhotoArea").classList.remove("hidden");
+  } else {
+    $("topPhotoImg").removeAttribute("src");
+    $("topPhotoArea").classList.add("hidden");
+  }
+}
 function fileToDataURL(file) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file);
@@ -839,6 +903,20 @@ async function renderPhotoSetting() {
     $("photoDel").classList.add("hidden");
   }
 }
+async function renderTopPhotoSetting() {
+  $("admTopEnabled").checked = settings.topEnabled !== false;
+  let url = "";
+  try { url = await fetchTopPhoto(); } catch (e) {}
+  const eff = effectiveTopPhoto(url);
+  if (eff) {
+    $("admTopPhotoPrev").src = eff;
+    $("admTopPhotoPrev").classList.remove("hidden");
+    $("topPhotoDel").classList.remove("hidden");
+  } else {
+    $("admTopPhotoPrev").classList.add("hidden");
+    $("topPhotoDel").classList.add("hidden");
+  }
+}
 async function newBookingNo() {
   for (let i = 0; i < 20; i++) {
     const no = String(Math.floor(100000 + Math.random() * 900000));
@@ -859,6 +937,7 @@ let adminAuthed = false;
 let editingNo = null; // 修正中の申込番号（申込画面を流用）
 let lastLookup = null; // 最後に確認した申込（画面を開き直したときに最新を取り直す）
 let photoUrl = ""; // トップ写真（設定されていれば）
+let topPhotoUrl = ""; // 最初の画面の写真（設定されていれば）
 let curView = "cal"; // 今出ている画面
 
 function applyTheme(name) {
@@ -871,7 +950,8 @@ function applyTheme(name) {
 function show(view) {
   curView = view;
   syncPhoto();
-  ["cal", "book", "done", "lookup", "admin", "tour", "tourdone"].forEach((v) => $("view-" + v).classList.toggle("hidden", v !== view));
+  document.body.classList.toggle("top-mode", view === "top");
+  ["top", "cal", "book", "done", "lookup", "admin", "tour", "tourdone"].forEach((v) => $("view-" + v).classList.toggle("hidden", v !== view));
   $("tab-cal").classList.toggle("active", view === "cal" || view === "book" || view === "done" || view === "tour" || view === "tourdone");
   $("tab-lookup").classList.toggle("active", view === "lookup");
   $("tab-admin").classList.toggle("active", view === "admin");
@@ -1622,9 +1702,12 @@ async function init() {
   renderDow();
   renderCalendar();
   renderTelHours();
+  show("top");
+  applyTopPhoto(effectiveTopPhoto(""));
   // 設定は後から読み込む（台帳への接続が遅くても、画面は先に出す）
-  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); renderTelHours(); fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {}); applyGuidePhotos(); }).catch(() => {});
+  fetchSettings().then((st) => { settings = st; applyTheme(settings.theme); renderCalendar(); renderTelHours(); if (settings.topEnabled === false && curView === "top") show("cal"); fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {}); fetchTopPhoto().then((url) => applyTopPhoto(effectiveTopPhoto(url))).catch(() => {}); applyGuidePhotos(); }).catch(() => {});
   fetchPhoto().then((url) => applyPhoto(effectivePhoto(url))).catch(() => {});
+  fetchTopPhoto().then((url) => applyTopPhoto(effectiveTopPhoto(url))).catch(() => {});
   loadGuidePhotos();
   renderLastBar();
   // 団体名に個人名が入ったら、代表者名にも同じ名前を入れる（空のときだけ）
@@ -1632,6 +1715,10 @@ async function init() {
   $("tab-cal").addEventListener("click", () => { show("cal"); renderCalendar(); });
   $("tab-lookup").addEventListener("click", () => { show("lookup"); refreshLookup(); });
   $("tab-admin").addEventListener("click", () => show("admin"));
+  $("topBookBtn").addEventListener("click", () => { show("cal"); renderCalendar(); });
+  $("topTourBtn").addEventListener("click", () => { show("tour"); renderTourCalendar(); });
+  $("topLookupBtn").addEventListener("click", () => { show("lookup"); refreshLookup(); });
+  $("topAdminBtn").addEventListener("click", () => show("admin"));
   $("calPrev").addEventListener("click", () => { curMonth.setMonth(curMonth.getMonth() - 1); renderCalendar(); });
   $("calNext").addEventListener("click", () => { curMonth.setMonth(curMonth.getMonth() + 1); renderCalendar(); });
   $("bookBack").addEventListener("click", () => { editingNo = null; show("cal"); renderCalendar(); });
@@ -1662,7 +1749,7 @@ async function init() {
       adminAuthed = true;
       $("adminLogin").classList.add("hidden");
       $("adminMain").classList.remove("hidden");
-      renderAdmin(); renderThemeRow(); renderPhotoSetting(); renderGuideSetting(); renderTourTimeSetting(); renderHoursSetting();
+      renderAdmin(); renderThemeRow(); renderPhotoSetting(); renderTopPhotoSetting(); renderGuideSetting(); renderTourTimeSetting(); renderHoursSetting();
       msg($("pinMsg"), "", true);
     } else {
       msg($("pinMsg"), "暗証番号が違います。");
@@ -1701,6 +1788,46 @@ async function init() {
       msg($("photoMsg"), "写真を消しました。", true);
     } catch (err) {
       msg($("photoMsg"), "写真を消せませんでした。");
+    }
+  });
+  $("admTopEnabled").addEventListener("change", async (e) => {
+    settings.topEnabled = e.target.checked;
+    try {
+      await saveSettings(settings);
+      msg($("topSetMsg"), settings.topEnabled ? "最初の画面を出すようにしました。" : "最初の画面を出さないようにしました。", true);
+    } catch (err) {
+      msg($("topSetMsg"), "保存できませんでした。");
+    }
+  });
+  $("topPhotoFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const url = await fileToDataURL(f);
+      await saveTopPhoto(url);
+      applyTopPhoto(url);
+      renderTopPhotoSetting();
+      msg($("topPhotoMsg"), "写真を変えました。", true);
+    } catch (err) {
+      msg($("topPhotoMsg"), "写真を保存できませんでした。");
+    }
+  });
+  $("topPhotoDel").addEventListener("click", async () => {
+    try {
+      const saved = await fetchTopPhoto();
+      if (saved) {
+        await deleteTopPhoto();
+        applyTopPhoto(effectiveTopPhoto(""));
+      } else {
+        settings.topSampleOff = true;
+        await saveSettings(settings);
+        applyTopPhoto("");
+      }
+      renderTopPhotoSetting();
+      msg($("topPhotoMsg"), "写真を消しました。", true);
+    } catch (err) {
+      msg($("topPhotoMsg"), "写真を消せませんでした。");
     }
   });
   $("guideFiles").addEventListener("change", async (e) => {
